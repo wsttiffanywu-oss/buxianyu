@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不羡鱼 · Bù Xiàn Yú</title>
+<style>
+  :root {
+    --ink: #0a0a0a;
+    --ash: #1a1a1a;
+    --smoke: #2e2e2e;
+    --mist: #5a5a5a;
+    --fog: #8a8a8a;
+    --silver: #c0c0c0;
+    --pearl: #e8e8e8;
+    --white: #f5f5f5;
+    --accent: #2d6a4f;
+    --accent-dim: #1a3d2b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ink);
+    color: var(--pearl);
+    font-family: 'Georgia', 'Songti SC', 'STSong', 'SimSun', serif;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 3rem;
+    background: linear-gradient(to bottom, rgba(10,10,10,0.95), transparent);
+  }
+
+  .nav-logo {
+    font-family: 'Songti SC', 'STSong', serif;
+    font-size: 1.1rem;
+    font-weight: 300;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--fog);
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+
+  .nav-links a:hover { color: var(--accent); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    padding: 6rem 2rem 4rem;
+  }
+
+  .hero-line {
+    width: 1px;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent, var(--accent));
+    margin: 0 auto 3rem;
+    animation: lineGrow 1.5s ease-out forwards;
+  }
+
+  @keyframes lineGrow {
+    from { height: 0; opacity: 0; }
+    to { height: 80px; opacity: 1; }
+  }
+
+  .hero-title {
+    font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+    font-size: clamp(3.5rem, 9vw, 8rem);
+    font-weight: 300;
+    letter-spacing: 0.15em;
+    color: var(--white);
+    animation: fadeUp 1s ease-out 0.3s both;
+  }
+
+  .hero-sub {
+    font-family: 'Georgia', serif;
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    font-style: italic;
+    color: var(--accent);
+    letter-spacing: 0.3em;
+    margin-top: 0.5rem;
+    animation: fadeUp 1s ease-out 0.5s both;
+  }
+
+  .hero-tagline {
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mist);
+    margin-top: 2.5rem;
+    max-width: 480px;
+    line-height: 2.2;
+    animation: fadeUp 1s ease-out 0.7s both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 2.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--mist);
+    font-family: 'Courier New', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    animation: pulse 2s infinite;
+  }
+
+  .scroll-hint::after {
+    content: '';
+    width: 1px;
+    height: 40px;
+    background: linear-gradient(to bottom, var(--mist), transparent);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* ── SECTION ── */
+  .section-header {
+    text-align: center;
+    padding: 5rem 2rem 3rem;
+  }
+
+  .section-tag {
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 1rem;
+  }
+
+  .section-title {
+    font-family: 'Georgia', serif;
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    font-weight: 300;
+    color: var(--white);
+    letter-spacing: 0.1em;
+  }
+
+  .section-divider {
+    width: 60px;
+    height: 1px;
+    background: var(--accent);
+    margin: 1.5rem auto;
+    opacity: 0.6;
+  }
+
+  /* ── COCKTAIL GRID ── */
+  .drinks-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    padding: 0 3px 3px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .drink-card {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 3/4;
+    cursor: pointer;
+    background: var(--ash);
+  }
+
+  .drink-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s ease;
+  }
+
+  .drink-card:hover img { transform: scale(1.05); }
+
+  .drink-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.2) 55%, transparent 100%);
+  }
+
+  .drink-card-content {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    padding: 2.5rem 2rem;
+  }
+
+  .drink-category {
+    font-family: 'Courier New', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .drink-name-zh {
+    font-family: 'Songti SC', 'STSong', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--white);
+    display: block;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+
+  .drink-name-en {
+    font-family: 'Georgia', serif;
+    font-size: 1rem;
+    font-style: italic;
+    color: var(--silver);
+    letter-spacing: 0.1em;
+  }
+
+  .drink-abv {
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: #4dbb6e;
+    letter-spacing: 0.15em;
+    margin-top: 0.8rem;
+  }
+
+  .drink-detail {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+  }
+
+  .drink-card:hover .drink-detail { max-height: 150px; }
+
+  .drink-desc {
+    font-family: 'Georgia', serif;
+    font-size: 0.85rem;
+    font-style: italic;
+    line-height: 1.7;
+    color: var(--silver);
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(212,175,122,0.25);
+  }
+
+  .drink-notes {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.7rem;
+  }
+
+  .note-tag {
+    font-family: 'Courier New', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-dim);
+    border: 1px solid rgba(138,111,62,0.4);
+    padding: 0.2rem 0.5rem;
+  }
+
+  /* ── SHOTS GRID ── */
+  .shots-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+    padding: 0 3px 3px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .shot-card {
+    position: relative;
+    aspect-ratio: 3/4;
+    overflow: hidden;
+    cursor: pointer;
+    background: var(--ash);
+  }
+
+  .shot-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+
+  .shot-card:hover img { transform: scale(1.06); }
+
+  .shot-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(5,5,5,0.88) 0%, transparent 60%);
+  }
+
+  .shot-content {
+    position: absolute;
+    bottom: 1.2rem;
+    left: 1.2rem;
+    right: 1.2rem;
+  }
+
+  .shot-name {
+    font-family: 'Songti SC', 'STSong', serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: var(--white);
+    display: block;
+  }
+
+  .shot-abv {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: #4dbb6e;
+    letter-spacing: 0.15em;
+    margin-top: 0.3rem;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    max-width: 900px;
+    width: 100%;
+    background: var(--ash);
+    position: relative;
+    overflow: hidden;
+    max-height: 90vh;
+  }
+
+  .modal-img {
+    overflow: hidden;
+    min-height: 400px;
+  }
+
+  .modal-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .modal-body {
+    padding: 3rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    justify-content: center;
+  }
+
+  .modal-category {
+    font-family: 'Courier New', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .modal-name-zh {
+    font-family: 'Songti SC', 'STSong', serif;
+    font-size: 2.5rem;
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1.1;
+  }
+
+  .modal-name-en {
+    font-family: 'Georgia', serif;
+    font-size: 1.1rem;
+    font-style: italic;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+  }
+
+  .modal-abv {
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: #4dbb6e;
+    letter-spacing: 0.2em;
+  }
+
+  .modal-divider {
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.5;
+  }
+
+  .modal-desc {
+    font-family: 'Georgia', serif;
+    font-size: 0.95rem;
+    font-style: italic;
+    line-height: 1.85;
+    color: var(--silver);
+  }
+
+  .modal-profile-title {
+    font-family: 'Courier New', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .modal-profile-text {
+    font-family: 'Georgia', serif;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: var(--fog);
+  }
+
+  .modal-notes { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+  .modal-close {
+    position: absolute;
+    top: 1rem; right: 1.2rem;
+    background: none;
+    border: none;
+    color: var(--fog);
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: color 0.3s;
+    z-index: 10;
+  }
+
+  .modal-close:hover { color: var(--white); }
+
+  /* ── CLASSICS ── */
+  .classics-list {
+    max-width: 580px;
+    margin: 0 auto;
+    padding: 0 2rem 5rem;
+  }
+
+  .classic-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+  }
+
+  .classic-item::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0;
+    width: 0; height: 1px;
+    background: var(--accent);
+    transition: width 0.4s;
+  }
+
+  .classic-item:hover::after { width: 100%; }
+
+  .classic-name {
+    font-family: 'Georgia', serif;
+    font-size: 1.3rem;
+    font-style: italic;
+    color: var(--silver);
+  }
+
+  .classic-sub {
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--mist);
+    display: block;
+    margin-top: 0.2rem;
+    font-style: italic;
+  }
+
+  .classic-badge {
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: #4dbb6e;
+    border: 1px solid rgba(77,187,110,0.4);
+    padding: 0.3rem 0.7rem;
+    text-transform: uppercase;
+  }
+
+  /* ── COMING SOON ── */
+  .coming-soon-section {
+    padding: 2rem 2rem 5rem;
+    max-width: 680px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .coming-card {
+    border: 1px solid rgba(212,175,122,0.12);
+    padding: 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .coming-card::before {
+    content: 'COMING SOON';
+    position: absolute;
+    top: 1.2rem; right: -2.2rem;
+    background: var(--accent);
+    color: var(--ink);
+    font-family: 'Courier New', monospace;
+    font-size: 0.45rem;
+    letter-spacing: 0.15em;
+    padding: 0.3rem 3.5rem;
+    transform: rotate(45deg);
+  }
+
+  .coming-name-zh {
+    font-family: 'Songti SC', 'STSong', serif;
+    font-size: 1.6rem;
+    font-weight: 300;
+    color: var(--silver);
+  }
+
+  .coming-desc {
+    font-family: 'Georgia', serif;
+    font-size: 0.9rem;
+    font-style: italic;
+    color: var(--mist);
+    line-height: 1.8;
+    margin-top: 0.8rem;
+  }
+
+  /* ── ABOUT ── */
+  .about-section {
+    padding: 6rem 2rem;
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .about-quote {
+    font-family: 'Songti SC', 'STSong', serif;
+    font-size: clamp(1.3rem, 3vw, 2rem);
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1.7;
+    letter-spacing: 0.05em;
+    margin-bottom: 2rem;
+  }
+
+  .about-quote em {
+    color: var(--accent);
+    font-style: normal;
+  }
+
+  .about-body {
+    font-family: 'Georgia', serif;
+    font-size: 1rem;
+    font-style: italic;
+    line-height: 2;
+    color: var(--fog);
+  }
+
+  .about-body p + p { margin-top: 1.2rem; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 3rem 2rem;
+    text-align: center;
+  }
+
+  footer .footer-brand {
+    font-family: 'Songti SC', 'STSong', serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: var(--accent);
+    letter-spacing: 0.3em;
+    display: block;
+    margin-bottom: 0.8rem;
+  }
+
+  footer span {
+    font-family: 'Courier New', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.3em;
+    color: var(--mist);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .drinks-grid { grid-template-columns: 1fr 1fr; }
+    .shots-grid { grid-template-columns: 1fr 1fr; }
+    nav { padding: 1.2rem 1.5rem; }
+    .nav-links { gap: 1.2rem; }
+    .modal { grid-template-columns: 1fr; }
+    .modal-img { min-height: 260px; max-height: 40vh; }
+  }
+
+  @media (max-width: 520px) {
+    .drinks-grid { grid-template-columns: 1fr; }
+    .shots-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ── SAKE SECTION ── */
+  .sake-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 3px;
+    padding: 0 3px 3px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .sake-card {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 3/4;
+    background: var(--ash);
+    cursor: pointer;
+  }
+
+  .sake-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s ease;
+  }
+
+  .sake-card:hover img { transform: scale(1.04); }
+
+  .sake-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.15) 55%, transparent 100%);
+  }
+
+  .sake-card-content {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 2.5rem 2rem;
+  }
+
+  .sake-season-tag {
+    font-family: 'Courier New', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .sake-name {
+    font-family: 'Georgia', serif;
+    font-size: 1.6rem;
+    font-style: italic;
+    color: var(--white);
+    display: block;
+    line-height: 1.2;
+  }
+
+  .sake-sub {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    color: #4dbb6e;
+    margin-top: 0.6rem;
+  }
+
+  .sake-desc {
+    font-family: 'Georgia', serif;
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--silver);
+    line-height: 1.7;
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+  }
+
+  .sake-card:hover .sake-desc { max-height: 100px; }
+
+  /* Empty state */
+  .sake-empty {
+    border: 1px solid rgba(255,255,255,0.06);
+    aspect-ratio: 3/4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .sake-empty-icon {
+    font-size: 2rem;
+    opacity: 0.2;
+  }
+
+  .sake-empty-text {
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mist);
+    text-align: center;
+    line-height: 2;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">不羡鱼</a>
+  <ul class="nav-links">
+    <li><a href="#cocktails">Cocktails</a></li>
+    <li><a href="#sake">In Stock</a></li>
+    <li><a href="#shots">Shots</a></li>
+    <li><a href="#classics">Classics</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-line"></div>
+  <h1 class="hero-title">不羡鱼</h1>
+  <p class="hero-sub">Bù Xiàn Yú</p>
+  <p class="hero-tagline">
+    临渊羡鱼，不如退而结网。<br>
+    Don't envy from the shore — go home and weave your net.
+  </p>
+  <div class="scroll-hint">Scroll</div>
+</section>
+
+<!-- COCKTAILS -->
+<section id="cocktails">
+  <div class="section-header">
+    <span class="section-tag">House Creations</span>
+    <h2 class="section-title">Cocktails</h2>
+    <div class="section-divider"></div>
+  </div>
+
+  <div class="drinks-grid">
+
+    <div class="drink-card" onclick="openModal('pineapple')">
+      <img src="images/pineapple_drift.jpg" alt="流金">
+      <div class="drink-card-overlay"></div>
+      <div class="drink-card-content">
+        <div class="drink-category">Cocktail · ~5% ABV</div>
+        <span class="drink-name-zh">流金</span>
+        <span class="drink-name-en">Pineapple Drift</span>
+        <div class="drink-abv">~5% ABV · 低度甜酒</div>
+        <div class="drink-detail">
+          <p class="drink-desc">菠萝冰沙在金黄色的酒液与夕阳中慢慢融化</p>
+          <div class="drink-notes">
+            <span class="note-tag">菠萝</span>
+            <span class="note-tag">Gin</span>
+            <span class="note-tag">清甜</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drink-card" onclick="openModal('citrus')">
+      <img src="images/citrus_amber.jpg" alt="橘光">
+      <div class="drink-card-overlay"></div>
+      <div class="drink-card-content">
+        <div class="drink-category">Cocktail · ~8-10% ABV</div>
+        <span class="drink-name-zh">橘光</span>
+        <span class="drink-name-en">Citrus Amber</span>
+        <div class="drink-abv">~8-10% ABV · 气泡清爽</div>
+        <div class="drink-detail">
+          <p class="drink-desc">泡制的耙耙柑原液与Milkis的碰撞</p>
+          <div class="drink-notes">
+            <span class="note-tag">春见</span>
+            <span class="note-tag">桃芒</span>
+            <span class="note-tag">Milkis</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drink-card" onclick="openModal('matcha')">
+      <img src="images/matcha_tide.jpg" alt="林深">
+      <div class="drink-card-overlay"></div>
+      <div class="drink-card-content">
+        <div class="drink-category">Cocktail · ~7% ABV</div>
+        <span class="drink-name-zh">林深</span>
+        <span class="drink-name-en">Matcha Tide</span>
+        <div class="drink-abv">~7% ABV · 植物草木</div>
+        <div class="drink-detail">
+          <p class="drink-desc">抹茶在椰青水中沉浮，椰子朗姆增添香气</p>
+          <div class="drink-notes">
+            <span class="note-tag">抹茶</span>
+            <span class="note-tag">椰青水</span>
+            <span class="note-tag">椰子朗姆</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drink-card" onclick="openModal('dusk_citrus')">
+      <img src="images/dusk_citrus.jpg" alt="晚橙">
+      <div class="drink-card-overlay"></div>
+      <div class="drink-card-content">
+        <div class="drink-category">Cocktail · ~10% ABV</div>
+        <span class="drink-name-zh">晚橙</span>
+        <span class="drink-name-en">Dusk Citrus</span>
+        <div class="drink-abv">~10% ABV · 橙香利口</div>
+        <div class="drink-detail">
+          <p class="drink-desc">橙汁与君度的相遇由甜橙片划上句号</p>
+          <div class="drink-notes">
+            <span class="note-tag">橙子汁</span>
+            <span class="note-tag">君度</span>
+            <span class="note-tag">糖渍橙片</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- SAKE -->
+<section id="sake">
+  <div class="section-header">
+    <span class="section-tag">Seasonal · 当季</span>
+    <h2 class="section-title">In Stock</h2>
+    <div class="section-divider"></div>
+  </div>
+
+  <!-- 有酒版：显示当前sake，没酒时删掉这个div，取消注释下面的empty版 -->
+  <div class="sake-grid">
+    <div class="sake-card" onclick="openModal('sake_lychee')">
+      <img src="images/sake_lychee.jpg" alt="Lychee Saketini">
+      <div class="sake-card-overlay"></div>
+      <div class="sake-card-content">
+        <div class="sake-season-tag">Now Available</div>
+        <span class="sake-name">Lychee Saketini</span>
+        <div class="sake-sub">6.8% ABV · Premium Sake Cocktail · 750ml</div>
+        <p class="sake-desc">Light and floral with lychee sweetness. Best served chilled, straight from the bottle.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 无酒版：当前没有sake时使用，把上面的sake-grid注释掉，取消下面的注释 -->
+  <!--
+  <div class="sake-grid" style="max-width:320px">
+    <div class="sake-empty">
+      <div class="sake-empty-icon">🍶</div>
+      <div class="sake-empty-text">Current bottle<br>has been enjoyed.<br><br>Next one<br>coming soon.</div>
+    </div>
+  </div>
+  -->
+</section>
+
+<!-- SHOTS -->
+<section id="shots">
+  <div class="section-header">
+    <span class="section-tag">Direct · Intense</span>
+    <h2 class="section-title">Shots</h2>
+    <div class="section-divider"></div>
+  </div>
+
+  <div class="shots-grid">
+
+    <div class="shot-card" onclick="openModal('chunjian')">
+      <img src="images/chunjian_shot.jpg" alt="春见 Shot">
+      <div class="shot-overlay"></div>
+      <div class="shot-content">
+        <span class="shot-name">春见 Shot</span>
+        <div class="shot-abv">16-17% ABV</div>
+      </div>
+    </div>
+
+    <div class="shot-card" onclick="openModal('bluebay')">
+      <img src="images/blue_bay.jpg" alt="蓝湾">
+      <div class="shot-overlay"></div>
+      <div class="shot-content">
+        <span class="shot-name">蓝湾</span>
+        <div class="shot-abv">Coconut Shore · ~6-8%</div>
+      </div>
+    </div>
+
+    <div class="shot-card" onclick="openModal('peach')">
+      <img src="images/peach_trap.jpg" alt="桃子杀手">
+      <div class="shot-overlay"></div>
+      <div class="shot-content">
+        <span class="shot-name">桃子杀手</span>
+        <div class="shot-abv">Peach Trap · ~15-18%</div>
+      </div>
+    </div>
+
+    <div class="shot-card" onclick="openModal('cloud')">
+      <img src="images/cloud.jpg" alt="卷云">
+      <div class="shot-overlay"></div>
+      <div class="shot-content">
+        <span class="shot-name">卷云</span>
+        <div class="shot-abv">Midnight Milk · ~8-9%</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- CLASSICS -->
+<section id="classics">
+  <div class="section-header">
+    <span class="section-tag">Always Available</span>
+    <h2 class="section-title">Classics</h2>
+    <div class="section-divider"></div>
+  </div>
+  <div class="classics-list">
+    <div class="classic-item">
+      <div>
+        <span class="classic-name">金汤力</span>
+        <span class="classic-sub">Gin &amp; Tonic</span>
+      </div>
+      <span class="classic-badge">~8% ABV</span>
+    </div>
+    <div class="classic-item">
+      <div>
+        <span class="classic-name">自由古巴</span>
+        <span class="classic-sub">Rum &amp; Coke</span>
+      </div>
+      <span class="classic-badge">~7% ABV</span>
+    </div>
+    <div class="classic-item">
+      <div>
+        <span class="classic-name">嗨棒</span>
+        <span class="classic-sub">Whiskey Highball</span>
+      </div>
+      <span class="classic-badge">~8% ABV</span>
+    </div>
+  </div>
+</section>
+
+<!-- COMING SOON -->
+<section>
+  <div class="section-header">
+    <span class="section-tag">Work in Progress</span>
+    <h2 class="section-title">即将登场</h2>
+    <div class="section-divider"></div>
+  </div>
+  <div class="coming-soon-section">
+    <div class="coming-card">
+      <span class="coming-name-zh">彩虹 Shot</span>
+      <p class="coming-desc">七种渐变色，从青绿到深红。实验仍在继续，蓝绿那段已经很美了。</p>
+    </div>
+    <div class="coming-card">
+      <span class="coming-name-zh">流金 · 改良版</span>
+      <p class="coming-desc">以菠萝啤+切块菠萝制成的冰块取代冰沙，加Gin与菠萝汁补满。新版本正在测试中。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="section-divider" style="margin-top:2rem;"></div>
+  <div class="about-section">
+    <p class="about-quote">
+      临渊羡鱼，不如<em>退而结网</em>。
+    </p>
+    <div class="about-body">
+      <p>「不羡鱼」&mdash;&mdash; Free Will Is The Path To Success</p>
+      
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span class="footer-brand">不羡鱼</span>
+  <span>Homemade · Handcrafted · For Friends</span>
+</footer>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal(null,true)">✕</button>
+    <div class="modal-img">
+      <img id="modal-img" src="" alt="">
+    </div>
+    <div class="modal-body">
+      <div class="modal-category" id="modal-category"></div>
+      <div>
+        <div class="modal-name-zh" id="modal-name-zh"></div>
+        <div class="modal-name-en" id="modal-name-en"></div>
+        <div class="modal-abv" id="modal-abv"></div>
+      </div>
+      <div class="modal-divider"></div>
+      <p class="modal-desc" id="modal-desc"></p>
+      <div>
+        <div class="modal-profile-title">香气档案 · Scent Profile</div>
+        <p class="modal-profile-text" id="modal-profile"></p>
+      </div>
+      <div>
+        <div class="modal-profile-title">适合 · Best For</div>
+        <p class="modal-profile-text" id="modal-for"></p>
+      </div>
+      <div class="modal-notes" id="modal-notes"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const drinks = {
+  pineapple: {
+    img: 'images/pineapple_drift.jpg',
+    category: 'Cocktail · Homemade',
+    nameZh: '流金', nameEn: 'Pineapple Drift', abv: '~5% ABV',
+    desc: '菠萝冰沙在金黄色的酒液与夕阳中慢慢融化随着冰块融化，风味随时间变化——先是清甜果香，再是微微的Gin植物气息，最后是一抹清爽的冰雪余韵。',
+    profile: '前调：热带菠萝果香 · 中调：Gin的草本植物气息 · 尾调：冰雪融化的清甜余韵',
+    bestFor: '偏爱果香、不嗜酒精的人。朋友都叫它「小甜酒」——看似无害，实则很满足。',
+    notes: ['菠萝', 'Gin', '菠萝啤', '低度', '果香']
+  },
+  citrus: {
+    img: 'images/citrus_amber.jpg',
+    category: 'Cocktail · Infused',
+    nameZh: '橘光', nameEn: 'Citrus Amber', abv: '~8-10% ABV',
+    desc: '用耙耙柑（学名：春见柑）捣碎，与Gin、桃子芒果混合果汁慢泡，过滤沉淀后呈现琥珀色。加冰和Milkis后变得轻盈气泡——朋友嫌烈，加了气泡就变温柔了。',
+    profile: '前调：新鲜柑橘果皮 · 中调：桃子芒果的南国甜香 · 尾调：Gin的清冽与温暖的酒感',
+    bestFor: '喜欢果香层次丰富的人。颜色美，人也开心。',
+    notes: ['春见柑', '桃子', '芒果', 'Gin', 'Milkis']
+  },
+  matcha: {
+    img: 'images/matcha_tide.jpg',
+    category: 'Cocktail · Layered',
+    nameZh: '林深', nameEn: 'Matcha Tide', abv: '~7% ABV',
+    desc: '抹茶在椰青水中沉浮，椰子朗姆增添香气视觉上呈现迷人的深绿分层，是目前最受朋友欢迎的一款。',
+    profile: '前调：椰香清甜 · 中调：抹茶的草木苦涩 · 尾调：椰子朗姆的暖意',
+    bestFor: '喜欢植物调、不爱甜腻的人。茶感突出，酒感轻柔。',
+    notes: ['抹茶', '椰青水', '椰子朗姆', '植物调']
+  },
+  chunjian: {
+    img: 'images/chunjian_shot.jpg',
+    category: 'Shot · Infused',
+    nameZh: '春见 Shot', nameEn: 'Chunjian Shot', abv: '16-17% ABV',
+    desc: '春见，即耙耙柑的学名，皮薄汁多、香气馥郁。将春见捣碎与Gin慢泡，过滤后装瓶，呈现深琥珀色。这是原液直饮版，风味浓郁直接。',
+    profile: '浓郁的柑橘果皮香气，Gin的植物清冽，入喉温热。',
+    bestFor: '能喝酒的人，想感受原汁原味泡制香气的人。一口下去，春天的感觉。',
+    notes: ['春见柑', 'Gin', '桃芒', '高度', '原液']
+  },
+  bluebay: {
+    img: 'images/blue_bay.jpg',
+    category: 'Shot · Original',
+    nameZh: '蓝湾', nameEn: 'Coconut Shore', abv: '~6-8% ABV',
+    desc: '用椰子水、椰青水与椰子朗姆调制，加入蓝橙力娇酒染上梦幻蓝色，杯沿裹上糖边。视觉上像一片南海蓝湾。',
+    profile: '前调：椰子水清甜 · 中调：蓝橙的热带果香 · 尾调：椰子朗姆的轻柔暖意',
+    bestFor: '喜欢热带风情、视觉感强的人。适合拍照，也适合一口干掉。',
+    notes: ['椰子水', '椰青水', '椰子朗姆', '蓝橙', '糖边']
+  },
+  peach: {
+    img: 'images/peach_trap.jpg',
+    category: 'Shot · Original',
+    nameZh: '桃子杀手', nameEn: 'Peach Trap', abv: '~15-18% ABV',
+    desc: '果冻、桃子软糖、Gin、桃子果汁——看起来甜甜可爱，但Gin默默埋伏。先是桃子的软甜温柔，然后酒感悄悄上来。',
+    profile: '前调：桃子软糖的甜蜜香气 · 中调：新鲜桃汁 · 尾调：Gin的后劲',
+    bestFor: '表面上不能喝酒，实际上想喝的人。小心，一杯不够，两杯有点猛。',
+    notes: ['桃子', 'Gin', '果冻', '软糖', '甜蜜陷阱']
+  },
+
+  dusk_citrus: {
+    img: 'images/dusk_citrus.jpg',
+    category: 'Cocktail · Homemade',
+    nameZh: '晚橙', nameEn: 'Dusk Citrus', abv: '~10% ABV',
+    desc: '橙子汁与君度利口酒调制，加糖提味，顶上放一片可食用的糖渍橙片作装饰。橙色如黄昏，入口温柔带甜。',
+    profile: '前调：新鲜橙汁的清亮酸甜 · 中调：君度的橙皮利口香气 · 尾调：糖渍橙片的焦糖余韵',
+    bestFor: '喜欢橙香、口感圆润的人。颜色好看，适合拍照，也适合慢慢喝。',
+    notes: ['橙子汁', '君度', '糖渍橙片', '~10%', '橙香']
+  },
+  sake_lychee: {
+    img: 'images/sake_lychee.jpg',
+    category: 'Seasonal · Now Available',
+    nameZh: 'Lychee Saketini', nameEn: 'Izumi · Premium Sake Cocktail', abv: '6.8% ABV',
+    desc: 'Light and floral with lychee sweetness. Made with premium sake and natural lychee flavour. Best served well chilled, straight or over ice.',
+    profile: 'Delicate lychee blossom · Clean sake base · Soft and slightly sweet finish',
+    bestFor: 'Anyone who wants something light and elegant. No mixing required — just chill and pour.',
+    notes: ['Sake', 'Lychee', '6.8%', '750ml', 'Chilled']
+  }
+
+  cloud: {
+    img: 'images/cloud.jpg',
+    category: 'Shot · Original',
+    nameZh: '卷云', nameEn: 'Midnight Milk', abv: '~8-9% ABV',
+    desc: '百利甜与牛奶各半，顶端是厚厚的奶油云朵，撒上可可粉（正在考虑换成小棉花糖或巧克力碎，因为朋友被可可粉呛到了）。',
+    profile: '前调：奶油与可可 · 中调：爱尔兰奶油的丝滑甜感 · 尾调：淡淡的酒香',
+    bestFor: '喜欢甜食多于喝酒的人。俏皮、有一点小攻击性的云——外表无害，内心有料。',
+    notes: ['百利甜', '牛奶', '奶油', '可可']
+  }
+};
+
+function openModal(key) {
+  const d = drinks[key];
+  if (!d) return;
+  document.getElementById('modal-img').src = d.img;
+  document.getElementById('modal-category').textContent = d.category;
+  document.getElementById('modal-name-zh').textContent = d.nameZh;
+  document.getElementById('modal-name-en').textContent = d.nameEn;
+  document.getElementById('modal-abv').textContent = d.abv;
+  document.getElementById('modal-desc').textContent = d.desc;
+  document.getElementById('modal-profile').textContent = d.profile;
+  document.getElementById('modal-for').textContent = d.bestFor;
+  document.getElementById('modal-notes').innerHTML = d.notes.map(n => `<span class="note-tag">${n}</span>`).join('');
+  document.getElementById('modal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e, force) {
+  if (force || (e && e.target === document.getElementById('modal'))) {
+    document.getElementById('modal').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(null, true); });
+</script>
+</body>
+</html>
