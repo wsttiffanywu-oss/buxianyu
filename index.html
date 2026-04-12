@@ -658,6 +658,116 @@
     .drinks-grid { grid-template-columns: 1fr; }
     .shots-grid { grid-template-columns: 1fr 1fr; }
   }
+
+  /* ── SAKE SECTION ── */
+  .sake-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 3px;
+    padding: 0 3px 3px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .sake-card {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 3/4;
+    background: var(--ash);
+    cursor: pointer;
+  }
+
+  .sake-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s ease;
+  }
+
+  .sake-card:hover img { transform: scale(1.04); }
+
+  .sake-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.15) 55%, transparent 100%);
+  }
+
+  .sake-card-content {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 2.5rem 2rem;
+  }
+
+  .sake-season-tag {
+    font-family: 'Courier New', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .sake-name {
+    font-family: 'Georgia', serif;
+    font-size: 1.6rem;
+    font-style: italic;
+    color: var(--white);
+    display: block;
+    line-height: 1.2;
+  }
+
+  .sake-sub {
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin-top: 0.6rem;
+  }
+
+  .sake-desc {
+    font-family: 'Georgia', serif;
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--silver);
+    line-height: 1.7;
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+  }
+
+  .sake-card:hover .sake-desc { max-height: 100px; }
+
+  /* Empty state */
+  .sake-empty {
+    border: 1px solid rgba(255,255,255,0.06);
+    aspect-ratio: 3/4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .sake-empty-icon {
+    font-size: 2rem;
+    opacity: 0.2;
+  }
+
+  .sake-empty-text {
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mist);
+    text-align: center;
+    line-height: 2;
+  }
+
 </style>
 </head>
 <body>
@@ -667,6 +777,7 @@
   <a href="#" class="nav-logo">不羡鱼</a>
   <ul class="nav-links">
     <li><a href="#cocktails">Cocktails</a></li>
+    <li><a href="#sake">In Stock</a></li>
     <li><a href="#shots">Shots</a></li>
     <li><a href="#classics">Classics</a></li>
     <li><a href="#about">About</a></li>
@@ -753,6 +864,40 @@
     </div>
 
   </div>
+</section>
+
+
+<!-- SAKE -->
+<section id="sake">
+  <div class="section-header">
+    <span class="section-tag">Seasonal · 当季</span>
+    <h2 class="section-title">In Stock</h2>
+    <div class="section-divider"></div>
+  </div>
+
+  <!-- 有酒版：显示当前sake，没酒时删掉这个div，取消注释下面的empty版 -->
+  <div class="sake-grid">
+    <div class="sake-card" onclick="openModal('sake_lychee')">
+      <img src="images/sake_lychee.jpg" alt="Lychee Saketini">
+      <div class="sake-card-overlay"></div>
+      <div class="sake-card-content">
+        <div class="sake-season-tag">Now Available</div>
+        <span class="sake-name">Lychee Saketini</span>
+        <div class="sake-sub">6.8% ABV · Premium Sake Cocktail · 750ml</div>
+        <p class="sake-desc">Light and floral with lychee sweetness. Best served chilled, straight from the bottle.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 无酒版：当前没有sake时使用，把上面的sake-grid注释掉，取消下面的注释 -->
+  <!--
+  <div class="sake-grid" style="max-width:320px">
+    <div class="sake-empty">
+      <div class="sake-empty-icon">🍶</div>
+      <div class="sake-empty-text">Current bottle<br>has been enjoyed.<br><br>Next one<br>coming soon.</div>
+    </div>
+  </div>
+  -->
 </section>
 
 <!-- SHOTS -->
@@ -959,6 +1104,17 @@ const drinks = {
     bestFor: '表面上不能喝酒，实际上想喝的人。小心，一杯不够，两杯有点猛。',
     notes: ['桃子', 'Gin', '果冻', '软糖', '甜蜜陷阱']
   },
+
+  sake_lychee: {
+    img: 'images/sake_lychee.jpg',
+    category: 'Seasonal · Now Available',
+    nameZh: 'Lychee Saketini', nameEn: 'Izumi · Premium Sake Cocktail', abv: '6.8% ABV',
+    desc: 'Light and floral with lychee sweetness. Made with premium sake and natural lychee flavour. Best served well chilled, straight or over ice.',
+    profile: 'Delicate lychee blossom · Clean sake base · Soft and slightly sweet finish',
+    bestFor: 'Anyone who wants something light and elegant. No mixing required — just chill and pour.',
+    notes: ['Sake', 'Lychee', '6.8%', '750ml', 'Chilled']
+  }
+
   cloud: {
     img: 'images/cloud.jpg',
     category: 'Shot · Original',
