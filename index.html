@@ -826,6 +826,25 @@
       </div>
     </div>
 
+    <div class="drink-card" onclick="openModal('dusk_citrus')">
+      <img src="images/dusk_citrus.jpg" alt="晚橙">
+      <div class="drink-card-overlay"></div>
+      <div class="drink-card-content">
+        <div class="drink-category">Cocktail · ~10% ABV</div>
+        <span class="drink-name-zh">晚橙</span>
+        <span class="drink-name-en">Dusk Citrus</span>
+        <div class="drink-abv">~10% ABV · 橙香利口</div>
+        <div class="drink-detail">
+          <p class="drink-desc">橙汁与君度的相遇由甜橙片划上句号</p>
+          <div class="drink-notes">
+            <span class="note-tag">橙子汁</span>
+            <span class="note-tag">君度</span>
+            <span class="note-tag">糖渍橙片</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="drink-card" onclick="openModal('citrus')">
       <img src="images/citrus_amber.jpg" alt="橘光" style="object-position: center 30%;">
       <div class="drink-card-overlay"></div>
@@ -845,6 +864,25 @@
       </div>
     </div>
 
+    <div class="drink-card" onclick="openModal('jasmine_float')">
+      <img src="images/jasmine_float.jpg" alt="浮白">
+      <div class="drink-card-overlay"></div>
+      <div class="drink-card-content">
+        <div class="drink-category">Cocktail · ~6-8% ABV</div>
+        <span class="drink-name-zh">浮白</span>
+        <span class="drink-name-en">Jasmine Float</span>
+        <div class="drink-abv">~6-8% ABV · 茶香清雅</div>
+        <div class="drink-detail">
+          <p class="drink-desc">茉莉花茶与伏特加的相遇，雪顶与柠檬碎点睛</p>
+          <div class="drink-notes">
+            <span class="note-tag">茉莉</span>
+            <span class="note-tag">伏特加</span>
+            <span class="note-tag">雪顶</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="drink-card" onclick="openModal('matcha')">
       <img src="images/matcha_tide.jpg" alt="林深">
       <div class="drink-card-overlay"></div>
@@ -859,25 +897,6 @@
             <span class="note-tag">抹茶</span>
             <span class="note-tag">椰青水</span>
             <span class="note-tag">椰子朗姆</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="drink-card" onclick="openModal('dusk_citrus')">
-      <img src="images/dusk_citrus.jpg" alt="晚橙">
-      <div class="drink-card-overlay"></div>
-      <div class="drink-card-content">
-        <div class="drink-category">Cocktail · ~10% ABV</div>
-        <span class="drink-name-zh">晚橙</span>
-        <span class="drink-name-en">Dusk Citrus</span>
-        <div class="drink-abv">~10% ABV · 橙香利口</div>
-        <div class="drink-detail">
-          <p class="drink-desc">橙汁与君度的相遇由甜橙片划上句号</p>
-          <div class="drink-notes">
-            <span class="note-tag">橙子汁</span>
-            <span class="note-tag">君度</span>
-            <span class="note-tag">糖渍橙片</span>
           </div>
         </div>
       </div>
@@ -958,7 +977,7 @@
     </div>
 
     <div class="shot-card" onclick="openModal('cloud')">
-      <img src="images/cloud.jpg" alt="卷云" style="object-position: center 60%;">
+      <img src="images/cloud.jpg" alt="卷云" style="object-position: center 40%;">
       <div class="shot-overlay"></div>
       <div class="shot-content">
         <span class="shot-name">卷云</span>
@@ -997,6 +1016,13 @@
         <span class="classic-sub">Whiskey Highball</span>
       </div>
       <span class="classic-badge">~8% ABV</span>
+    </div>
+    <div class="classic-item">
+      <div>
+        <span class="classic-name">浓缩咖啡马天尼</span>
+        <span class="classic-sub">Espresso Martini</span>
+      </div>
+      <span class="classic-badge">~28% ABV</span>
     </div>
   </div>
 </section>
@@ -1123,6 +1149,16 @@ const drinks = {
     profile: '前调：桃子软糖的甜蜜香气 · 中调：新鲜桃汁 · 尾调：Gin的后劲',
     bestFor: '表面上不能喝酒，实际上想喝的人。小心，一杯不够，两杯有点猛。',
     notes: ['桃子', 'Gin', '果冻', '软糖', '甜蜜陷阱']
+  },
+
+  jasmine_float: {
+    img: 'images/jasmine_float.jpg',
+    category: 'Cocktail · Original',
+    nameZh: '浮白', nameEn: 'Jasmine Float', abv: '~6-8% ABV',
+    desc: '茉莉花茶与伏特加的相遇，雪顶漂浮其上，柠檬碎点缀香气。灵感来自一杯让人念念不忘的茶饮，用酒的语言重新诠释。',
+    profile: '前调：茉莉花香 · 中调：茶的清透与伏特加的干净 · 尾调：柠檬的清爽余韵',
+    bestFor: '喜欢茶香、清爽不腻的人。喝起来像一杯有点坏的茶。',
+    notes: ['茉莉', '伏特加', '雪顶', '柠檬碎', '茶香']
   },
 
   dusk_citrus: {
