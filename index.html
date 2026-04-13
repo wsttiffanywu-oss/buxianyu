@@ -211,7 +211,9 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center center;
     transition: transform 0.7s ease;
+    background: var(--ash);
   }
 
   .drink-card:hover img { transform: scale(1.05); }
@@ -219,7 +221,7 @@
   .drink-card-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(5,5,5,0.92) 0%, rgba(5,5,5,0.2) 55%, transparent 100%);
+    background: linear-gradient(to top, rgba(5,5,5,0.88) 0%, rgba(5,5,5,0.05) 45%, transparent 100%);
   }
 
   .drink-card-content {
@@ -806,7 +808,7 @@
   <div class="drinks-grid">
 
     <div class="drink-card" onclick="openModal('pineapple')">
-      <img src="images/pineapple_drift.jpg" alt="流金">
+      <img src="images/pineapple_drift.jpg" alt="流金" style="object-position: center 40%;">
       <div class="drink-card-overlay"></div>
       <div class="drink-card-content">
         <div class="drink-category">Cocktail · ~5% ABV</div>
@@ -825,7 +827,7 @@
     </div>
 
     <div class="drink-card" onclick="openModal('citrus')">
-      <img src="images/citrus_amber.jpg" alt="橘光">
+      <img src="images/citrus_amber.jpg" alt="橘光" style="object-position: center 30%;">
       <div class="drink-card-overlay"></div>
       <div class="drink-card-content">
         <div class="drink-category">Cocktail · ~8-10% ABV</div>
@@ -1140,7 +1142,7 @@ const drinks = {
     profile: 'Delicate lychee blossom · Clean sake base · Soft and slightly sweet finish',
     bestFor: 'Anyone who wants something light and elegant. No mixing required — just chill and pour.',
     notes: ['Sake', 'Lychee', '6.8%', '750ml', 'Chilled']
-  }
+  },
 
   cloud: {
     img: 'images/cloud.jpg',
