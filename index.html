@@ -470,7 +470,7 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .modal-category {
@@ -998,7 +998,7 @@
     letter-spacing: 0.2em;
     text-transform: uppercase;
     cursor: pointer;
-    z-index: 300;
+    z-index: 650;
     display: none;
   }
   .admin-modal {
@@ -1104,9 +1104,10 @@
     </div>
   </div>
 
-  <!-- Floating admin button shown on mobile when logged in as Ly -->
-  <button id="admin-float-btn" class="admin-float-btn" onclick="openAdmin()">Admin</button>
 </div>
+
+<!-- Floating admin button shown on mobile when logged in as Ly -->
+<button id="admin-float-btn" class="admin-float-btn" onclick="openAdmin()">Admin</button>
 
 <!-- HERO -->
 <section class="hero">
@@ -1642,6 +1643,7 @@ if (globalCommentForm) {
     const text = (input.value || '').trim();
     if (!text || !key) return;
     const name = localStorage.getItem('currentUser') || '匿名';
+    saveVisitorName(name);
     // Push comment to Firebase
     if (window._firebaseDB && window._firebaseRef && window._firebasePush && window._firebaseSet) {
       const commentsRef = window._firebaseRef(window._firebaseDB, 'comments/' + key);
@@ -1663,6 +1665,31 @@ function showNamePopup() {
   if (overlay) overlay.style.display = 'flex';
 }
 
+function safeFirebaseKey(name) {
+  return (name || 'anonymous').replace(/[.#$/\[\]]/g, '_');
+}
+
+function saveVisitorName(name) {
+  if (!name) return;
+  let visitors = [];
+  try {
+    visitors = JSON.parse(localStorage.getItem('visitors')) || [];
+  } catch (err) {
+    visitors = [];
+  }
+  if (!visitors.includes(name)) {
+    visitors.push(name);
+    localStorage.setItem('visitors', JSON.stringify(visitors));
+  }
+  if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
+    const visitorRef = window._firebaseRef(window._firebaseDB, 'visitors/' + safeFirebaseKey(name));
+    window._firebaseSet(visitorRef, {
+      name: name,
+      lastSeen: Date.now()
+    });
+  }
+}
+
 function setupNamePopup() {
   const overlay = document.getElementById('name-overlay');
   const input = document.getElementById('visitor-name');
@@ -1671,6 +1698,7 @@ function setupNamePopup() {
   const passwordInput = document.getElementById('admin-password');
   const passwordHint = document.getElementById('password-hint');
   if (!overlay || !input || !messageEl || !btn) return;
+
   btn.addEventListener('click', function () {
     const name = (input.value || '').trim();
     const password = passwordInput ? passwordInput.value : '';
@@ -1678,53 +1706,44 @@ function setupNamePopup() {
       messageEl.textContent = '请输入名字 / Please enter a name';
       return;
     }
-    // If not Ly, hide password fields
+
+    localStorage.setItem('isAdmin', 'false');
+
     if (name !== 'Ly' && passwordInput) {
       passwordInput.style.display = 'none';
       if (passwordHint) passwordHint.style.display = 'none';
       passwordInput.value = '';
     }
-    // Handle Ly with password
+
     if (name === 'Ly') {
-      // If password field hidden, prompt for password
       if (passwordInput && passwordInput.style.display === 'none') {
         passwordInput.style.display = 'block';
         if (passwordHint) passwordHint.style.display = 'block';
         messageEl.textContent = '请输入密码 / Please enter the password';
         return;
       }
-      // Password field visible, verify
       if (password !== '123580') {
         messageEl.textContent = '密码错误 / Incorrect password';
+        localStorage.setItem('isAdmin', 'false');
+        updateAdminUI();
         return;
       }
+      localStorage.setItem('isAdmin', 'true');
     }
-    // Normal logic: update visitors list
-    let visitors = [];
-    try {
-      visitors = JSON.parse(localStorage.getItem('visitors')) || [];
-    } catch (err) {
-      visitors = [];
-    }
-    if (visitors.includes(name)) {
-      messageEl.textContent = name + ' 已存在 · Already exists';
-    } else {
-      visitors.push(name);
-      localStorage.setItem('visitors', JSON.stringify(visitors));
-      messageEl.textContent = '欢迎, ' + name + '!';
-    }
+
+    saveVisitorName(name);
     localStorage.setItem('currentUser', name);
-    // update admin UI
+    messageEl.textContent = name === 'Ly' ? '管理员模式开启 / Admin mode ON' : '欢迎, ' + name + '!';
     updateAdminUI();
+
     setTimeout(() => {
       overlay.style.display = 'none';
-      // reset password field after closing
       if (passwordInput) {
         passwordInput.style.display = 'none';
         passwordInput.value = '';
       }
       if (passwordHint) passwordHint.style.display = 'none';
-    }, 800);
+    }, 600);
   });
 }
 
@@ -1741,14 +1760,9 @@ function updateAdminUI() {
   const adminLink = document.getElementById('admin-link');
   const adminFloat = document.getElementById('admin-float-btn');
   const current = localStorage.getItem('currentUser');
-  if (!adminLink) return;
-  if (current === 'Ly') {
-    adminLink.style.display = 'block';
-    if (adminFloat) adminFloat.style.display = 'block';
-  } else {
-    adminLink.style.display = 'none';
-    if (adminFloat) adminFloat.style.display = 'none';
-  }
+  const isAdmin = current === 'Ly' && localStorage.getItem('isAdmin') === 'true';
+  if (adminLink) adminLink.style.display = isAdmin ? 'block' : 'none';
+  if (adminFloat) adminFloat.style.display = isAdmin ? 'block' : 'none';
 }
 
 function deleteComment(key, idOrIndex) {
@@ -1789,19 +1803,45 @@ function closeAdmin() {
 function loadVisitorList() {
   const listEl = document.getElementById('name-list');
   if (!listEl) return;
-  listEl.innerHTML = '';
+  listEl.innerHTML = '<li>Loading...</li>';
+
+  if (window._firebaseDB && window._firebaseRef && window._firebaseOnValue) {
+    const visitorsRef = window._firebaseRef(window._firebaseDB, 'visitors');
+    window._firebaseOnValue(visitorsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const names = Object.values(data)
+        .map(v => typeof v === 'string' ? v : v.name)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+      renderVisitorList(names);
+    });
+    return;
+  }
+
   let visitors = [];
   try {
     visitors = JSON.parse(localStorage.getItem('visitors')) || [];
   } catch (err) {
     visitors = [];
   }
+  renderVisitorList(visitors);
+}
+
+function renderVisitorList(visitors) {
+  const listEl = document.getElementById('name-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (!visitors.length) {
+    const li = document.createElement('li');
+    li.textContent = '暂无记录 / No names yet';
+    listEl.appendChild(li);
+    return;
+  }
   visitors.forEach(name => {
     const li = document.createElement('li');
     const nameSpan = document.createElement('span');
     nameSpan.textContent = name;
     const btn = document.createElement('button');
-    // reuse delete-comment-btn styles for name deletion buttons
     btn.className = 'delete-comment-btn';
     btn.textContent = '删除';
     btn.addEventListener('click', function () {
@@ -1814,6 +1854,10 @@ function loadVisitorList() {
 }
 
 function deleteName(name) {
+  if (window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
+    const visitorRef = window._firebaseRef(window._firebaseDB, 'visitors/' + safeFirebaseKey(name));
+    window._firebaseRemove(visitorRef);
+  }
   let visitors = [];
   try {
     visitors = JSON.parse(localStorage.getItem('visitors')) || [];
@@ -1825,7 +1869,9 @@ function deleteName(name) {
     visitors.splice(idx, 1);
     localStorage.setItem('visitors', JSON.stringify(visitors));
   }
-  loadVisitorList();
+  if (!(window._firebaseDB && window._firebaseRef && window._firebaseOnValue)) {
+    loadVisitorList();
+  }
 }
 
 // ── RATING FUNCTIONS ──
@@ -1913,6 +1959,7 @@ function setupRating() {
         return;
       }
       // Save rating to Firebase
+      saveVisitorName(currentUser);
       if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
         const ratingRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + currentUser);
         window._firebaseSet(ratingRef, { value: rating, time: Date.now() });
@@ -1928,8 +1975,9 @@ function loadRatingsForAdmin(key) {
   const listEl = document.getElementById('ratings-list');
   if (!logContainer || !listEl) return;
   const currentUser = localStorage.getItem('currentUser') || '';
+  const isAdmin = currentUser === 'Ly' && localStorage.getItem('isAdmin') === 'true';
   // Only show rating logs to admin
-  if (currentUser !== 'Ly') {
+  if (!isAdmin) {
     logContainer.style.display = 'none';
     listEl.innerHTML = '';
     return;
