@@ -2064,5 +2064,42 @@ function setupAdminData() {
   }
 }
 </script>
+    <script type="module">
+      // Firebase initialization for realtime database
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getDatabase,
+        ref,
+        push,
+        set,
+        onValue,
+        remove
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+      // Firebase project configuration. The databaseURL points to the Realtime Database instance
+      const firebaseConfig = {
+        apiKey: "AIzaSyAPdtgseLIgYPAMhOL4Kp0UcbN03UMMGEg",
+        authDomain: "buxianyu-99c47.firebaseapp.com",
+        databaseURL: "https://buxianyu-99c47-default-rtdb.firebaseio.com",
+        projectId: "buxianyu-99c47",
+        storageBucket: "buxianyu-99c47.firebasestorage.app",
+        messagingSenderId: "117080078617",
+        appId: "1:117080078617:web:86c63ec1cf41e28a50ad88"
+      };
+
+      // Initialize Firebase and expose commonly used functions on the global window object. These
+      // names are consumed by the rest of the script (e.g. loadComments, loadRating) to interact
+      // with the database. Without this initialization the functions would be undefined and
+      // comments/ratings would not persist.
+      const _app = initializeApp(firebaseConfig);
+      const _db = getDatabase(_app);
+      window._firebaseApp = _app;
+      window._firebaseDB = _db;
+      window._firebaseRef = ref;
+      window._firebasePush = push;
+      window._firebaseSet = set;
+      window._firebaseOnValue = onValue;
+      window._firebaseRemove = remove;
+    </script>
 </body>
 </html>
