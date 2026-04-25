@@ -1549,49 +1549,59 @@ function closeModal(e, force) {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(null, true); });
+// Maps to store Firebase listener unsubscribe functions for comments and ratings
+const commentListeners = {};
+const ratingListeners = {};
 
 // ── COMMENTS LOGIC ──
 function loadComments(key) {
   const list = document.getElementById('comments-list');
   if (!list) return;
-  list.innerHTML = '';
-  let comments = [];
-  try {
-    comments = JSON.parse(localStorage.getItem('comments_' + key)) || [];
-  } catch (err) {
-    comments = [];
+  // Remove previous Firebase listener if exists
+  if (commentListeners[key]) {
+    commentListeners[key]();
   }
-  comments.forEach((c, idx) => {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'comment';
-    const date = new Date(c.timestamp);
-    const dateStr =
-      date.getFullYear() + '-' +
-      String(date.getMonth() + 1).padStart(2, '0') + '-' +
-      String(date.getDate()).padStart(2, '0') + ' ' +
-      String(date.getHours()).padStart(2, '0') + ':' +
-      String(date.getMinutes()).padStart(2, '0');
-    const meta = document.createElement('div');
-    meta.className = 'comment-meta';
-    meta.innerHTML = '<strong>' + c.name + '</strong> 于 ' + dateStr + ' 评论:';
-    // If admin or the comment author, add delete button
-    const currentUser = localStorage.getItem('currentUser');
-    if (currentUser && (currentUser === 'Ly' || currentUser === c.name)) {
-      const btn = document.createElement('button');
-      btn.className = 'delete-comment-btn';
-      btn.textContent = '删除';
-      btn.addEventListener('click', function () {
-        deleteComment(key, idx);
+  list.innerHTML = '';
+  // Listen to comments in Firebase under comments/{key}
+  const commentsRef = window._firebaseRef && window._firebaseDB ? window._firebaseRef(window._firebaseDB, 'comments/' + key) : null;
+  if (commentsRef && window._firebaseOnValue) {
+    commentListeners[key] = window._firebaseOnValue(commentsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      list.innerHTML = '';
+      const currentUser = localStorage.getItem('currentUser');
+      Object.keys(data).forEach(commentId => {
+        const c = data[commentId] || {};
+        const wrapper = document.createElement('div');
+        wrapper.className = 'comment';
+        const date = new Date(c.timestamp || Date.now());
+        const dateStr =
+          date.getFullYear() + '-' +
+          String(date.getMonth() + 1).padStart(2, '0') + '-' +
+          String(date.getDate()).padStart(2, '0') + ' ' +
+          String(date.getHours()).padStart(2, '0') + ':' +
+          String(date.getMinutes()).padStart(2, '0');
+        const meta = document.createElement('div');
+        meta.className = 'comment-meta';
+        meta.innerHTML = '<strong>' + (c.name || '匿名') + '</strong> 于 ' + dateStr + ' 评论:';
+        // If admin or the comment author, add delete button
+        if (currentUser && (currentUser === 'Ly' || currentUser === c.name)) {
+          const btn = document.createElement('button');
+          btn.className = 'delete-comment-btn';
+          btn.textContent = '删除';
+          btn.addEventListener('click', function () {
+            deleteComment(key, commentId);
+          });
+          meta.appendChild(btn);
+        }
+        const textDiv = document.createElement('div');
+        textDiv.className = 'comment-text';
+        textDiv.textContent = c.text || '';
+        wrapper.appendChild(meta);
+        wrapper.appendChild(textDiv);
+        list.appendChild(wrapper);
       });
-      meta.appendChild(btn);
-    }
-    const textDiv = document.createElement('div');
-    textDiv.className = 'comment-text';
-    textDiv.textContent = c.text;
-    wrapper.appendChild(meta);
-    wrapper.appendChild(textDiv);
-    list.appendChild(wrapper);
-  });
+    });
+  }
 }
 
 const globalCommentForm = document.getElementById('comment-form');
@@ -1603,16 +1613,18 @@ if (globalCommentForm) {
     const text = (input.value || '').trim();
     if (!text || !key) return;
     const name = localStorage.getItem('currentUser') || '匿名';
-    let comments = [];
-    try {
-      comments = JSON.parse(localStorage.getItem('comments_' + key)) || [];
-    } catch (err) {
-      comments = [];
+    // Push comment to Firebase
+    if (window._firebaseDB && window._firebaseRef && window._firebasePush && window._firebaseSet) {
+      const commentsRef = window._firebaseRef(window._firebaseDB, 'comments/' + key);
+      const newRef = window._firebasePush(commentsRef);
+      window._firebaseSet(newRef, {
+        name: name,
+        text: text,
+        timestamp: Date.now()
+      });
     }
-    comments.push({ name: name, text: text, timestamp: Date.now() });
-    localStorage.setItem('comments_' + key, JSON.stringify(comments));
     input.value = '';
-    loadComments(key);
+    // Comments will refresh automatically via listener
   });
 }
 
@@ -1707,14 +1719,22 @@ function updateAdminUI() {
   }
 }
 
-function deleteComment(key, index) {
+function deleteComment(key, idOrIndex) {
+  // If idOrIndex is a string, treat as Firebase comment ID; remove from DB
+  if (typeof idOrIndex === 'string' && window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
+    const commentRef = window._firebaseRef(window._firebaseDB, 'comments/' + key + '/' + idOrIndex);
+    window._firebaseRemove(commentRef);
+    return;
+  }
+  // Fallback: remove from localStorage using index (legacy)
   let comments = [];
   try {
     comments = JSON.parse(localStorage.getItem('comments_' + key)) || [];
   } catch (err) {
     comments = [];
   }
-  if (index >= 0 && index < comments.length) {
+  const index = idOrIndex;
+  if (typeof index === 'number' && index >= 0 && index < comments.length) {
     comments.splice(index, 1);
     localStorage.setItem('comments_' + key, JSON.stringify(comments));
     loadComments(key);
@@ -1782,46 +1802,50 @@ function loadRating(key) {
   if (!starContainer) return;
   const stars = starContainer.querySelectorAll('.star');
   const avgEl = document.getElementById('rating-average');
-  // Retrieve rating object; handle both legacy numeric values and new {value,time} objects
-  let ratingsObj = {};
-  try {
-    ratingsObj = JSON.parse(localStorage.getItem('ratings_' + key)) || {};
-  } catch (err) {
-    ratingsObj = {};
+  // Remove previous rating listener if exists
+  if (ratingListeners[key]) {
+    ratingListeners[key]();
   }
-  const currentUser = localStorage.getItem('currentUser') || '';
-  let currentUserRating = 0;
-  const ratingEntry = ratingsObj[currentUser];
-  if (ratingEntry) {
-    if (typeof ratingEntry === 'object' && ratingEntry !== null) {
-      currentUserRating = ratingEntry.value || 0;
-    } else {
-      currentUserRating = ratingEntry;
-    }
-  }
-  // Reset all stars
-  stars.forEach(star => {
-    const value = parseInt(star.dataset.value);
-    if (value <= currentUserRating) {
-      star.classList.add('filled');
-    } else {
-      star.classList.remove('filled');
-    }
-    // Remove any hover state when loading
-    star.classList.remove('hovered');
-  });
-  // Compute average
-  const values = Object.values(ratingsObj).map(val => {
-    if (typeof val === 'object' && val !== null) return val.value || 0;
-    return val;
-  });
-  let avg = 0;
-  if (values.length > 0) {
-    const sum = values.reduce((a, b) => a + b, 0);
-    avg = (sum / values.length).toFixed(1);
-    avgEl.textContent = '平均评分：' + avg + ' (' + values.length + '人) / Average rating';
-  } else {
-    avgEl.textContent = '暂无评分 / No ratings yet';
+  // Listen to Firebase ratings
+  const ratingsRef = window._firebaseRef && window._firebaseDB ? window._firebaseRef(window._firebaseDB, 'ratings/' + key) : null;
+  if (ratingsRef && window._firebaseOnValue) {
+    ratingListeners[key] = window._firebaseOnValue(ratingsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const currentUser = localStorage.getItem('currentUser') || '';
+      let currentUserRating = 0;
+      const ratingEntry = data[currentUser];
+      if (ratingEntry) {
+        if (typeof ratingEntry === 'object' && ratingEntry !== null) {
+          currentUserRating = ratingEntry.value || 0;
+        } else {
+          currentUserRating = ratingEntry;
+        }
+      }
+      // Update star fill
+      stars.forEach(star => {
+        const value = parseInt(star.dataset.value);
+        if (value <= currentUserRating) {
+          star.classList.add('filled');
+        } else {
+          star.classList.remove('filled');
+        }
+        star.classList.remove('hovered');
+      });
+      // Compute average
+      const values = Object.values(data).map(val => {
+        if (typeof val === 'object' && val !== null) return val.value || 0;
+        return val;
+      });
+      if (values.length > 0) {
+        const sum = values.reduce((a, b) => a + b, 0);
+        const avg = (sum / values.length).toFixed(1);
+        avgEl.textContent = '平均评分：' + avg + ' (' + values.length + '人) / Average rating';
+      } else {
+        avgEl.textContent = '暂无评分 / No ratings yet';
+      }
+      // If admin logs visible, refresh logs
+      loadRatingsForAdmin(key);
+    });
   }
 }
 
@@ -1856,18 +1880,12 @@ function setupRating() {
         alert('请先输入名字 / Please enter your name first');
         return;
       }
-      let ratingsObj = {};
-      try {
-        ratingsObj = JSON.parse(localStorage.getItem('ratings_' + key)) || {};
-      } catch (err) {
-        ratingsObj = {};
+      // Save rating to Firebase
+      if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
+        const ratingRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + currentUser);
+        window._firebaseSet(ratingRef, { value: rating, time: Date.now() });
       }
-      // store rating with timestamp for auditing
-      ratingsObj[currentUser] = { value: rating, time: Date.now() };
-      localStorage.setItem('ratings_' + key, JSON.stringify(ratingsObj));
-      loadRating(key);
-      // If admin view is open, update rating logs list
-      loadRatingsForAdmin(key);
+      // Rating updates will refresh via listener
     });
   });
 }
@@ -1886,64 +1904,69 @@ function loadRatingsForAdmin(key) {
   }
   logContainer.style.display = 'block';
   listEl.innerHTML = '';
-  let ratingsObj = {};
-  try {
-    ratingsObj = JSON.parse(localStorage.getItem('ratings_' + key)) || {};
-  } catch (err) {
-    ratingsObj = {};
-  }
-  Object.keys(ratingsObj).forEach(name => {
-    const entry = ratingsObj[name];
-    let ratingValue, timestamp;
-    if (typeof entry === 'object' && entry !== null) {
-      ratingValue = entry.value || 0;
-      timestamp = entry.time || 0;
-    } else {
-      ratingValue = entry;
-      timestamp = 0;
-    }
-    // Format timestamp
-    let dateStr = '';
-    if (timestamp) {
-      const date = new Date(timestamp);
-      dateStr =
-        date.getFullYear() + '-' +
-        String(date.getMonth() + 1).padStart(2, '0') + '-' +
-        String(date.getDate()).padStart(2, '0') + ' ' +
-        String(date.getHours()).padStart(2, '0') + ':' +
-        String(date.getMinutes()).padStart(2, '0');
-    } else {
-      dateStr = '未知时间';
-    }
-    const div = document.createElement('div');
-    div.className = 'rating-entry';
-    const span = document.createElement('span');
-    span.innerHTML = '<strong>' + name + '</strong> 于 ' + dateStr + ' 评分: ' + ratingValue + ' 星';
-    div.appendChild(span);
-    const btn = document.createElement('button');
-    btn.className = 'delete-rating-btn';
-    btn.textContent = '删除';
-    btn.addEventListener('click', function () {
-      deleteRating(key, name);
+  if (window._firebaseDB && window._firebaseRef && window._firebaseOnValue) {
+    const rRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key);
+    window._firebaseOnValue(rRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      listEl.innerHTML = '';
+      Object.keys(data).forEach(name => {
+        const entry = data[name];
+        let ratingValue, timestamp;
+        if (typeof entry === 'object' && entry !== null) {
+          ratingValue = entry.value || 0;
+          timestamp = entry.time || 0;
+        } else {
+          ratingValue = entry;
+          timestamp = 0;
+        }
+        let dateStr = '';
+        if (timestamp) {
+          const date = new Date(timestamp);
+          dateStr =
+            date.getFullYear() + '-' +
+            String(date.getMonth() + 1).padStart(2, '0') + '-' +
+            String(date.getDate()).padStart(2, '0') + ' ' +
+            String(date.getHours()).padStart(2, '0') + ':' +
+            String(date.getMinutes()).padStart(2, '0');
+        } else {
+          dateStr = '未知时间';
+        }
+        const div = document.createElement('div');
+        div.className = 'rating-entry';
+        const span = document.createElement('span');
+        span.innerHTML = '<strong>' + name + '</strong> 于 ' + dateStr + ' 评分: ' + ratingValue + ' 星';
+        div.appendChild(span);
+        const btn = document.createElement('button');
+        btn.className = 'delete-rating-btn';
+        btn.textContent = '删除';
+        btn.addEventListener('click', function () {
+          deleteRating(key, name);
+        });
+        div.appendChild(btn);
+        listEl.appendChild(div);
+      });
     });
-    div.appendChild(btn);
-    listEl.appendChild(div);
-  });
+  }
 }
 
 function deleteRating(key, name) {
-  let ratingsObj = {};
-  try {
-    ratingsObj = JSON.parse(localStorage.getItem('ratings_' + key)) || {};
-  } catch (err) {
-    ratingsObj = {};
+  if (window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
+    const rRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + name);
+    window._firebaseRemove(rRef);
+  } else {
+    // fallback to localStorage removal
+    let ratingsObj = {};
+    try {
+      ratingsObj = JSON.parse(localStorage.getItem('ratings_' + key)) || {};
+    } catch (err) {
+      ratingsObj = {};
+    }
+    if (ratingsObj.hasOwnProperty(name)) {
+      delete ratingsObj[name];
+      localStorage.setItem('ratings_' + key, JSON.stringify(ratingsObj));
+    }
   }
-  if (ratingsObj.hasOwnProperty(name)) {
-    delete ratingsObj[name];
-    localStorage.setItem('ratings_' + key, JSON.stringify(ratingsObj));
-  }
-  loadRating(key);
-  loadRatingsForAdmin(key);
+  // Rating updates will refresh via listener
 }
 
 // ── DATA EXPORT/IMPORT FUNCTIONS ──
