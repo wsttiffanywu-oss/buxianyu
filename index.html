@@ -470,7 +470,7 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .modal-category {
@@ -998,7 +998,7 @@
     letter-spacing: 0.2em;
     text-transform: uppercase;
     cursor: pointer;
-    z-index: 650;
+    z-index: 300;
     display: none;
   }
   .admin-modal {
@@ -1058,6 +1058,27 @@
     color: var(--white);
   }
 
+  /* Styling for guest and admin login buttons in name overlay */
+  .guest-btn, .admin-login-btn, .admin-auth-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background: var(--accent);
+    border: none;
+    color: var(--white);
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+  .guest-btn:hover, .admin-login-btn:hover, .admin-auth-btn:hover {
+    background: var(--accent-dim);
+  }
+
+  .auth-message {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--mist);
+  }
+
 </style>
 </head>
 <body>
@@ -1081,12 +1102,21 @@
 <div class="name-overlay" id="name-overlay" style="display: none;">
   <div class="name-modal">
     <h2>欢迎 · Welcome</h2>
-    <p>请输入您的名字 / Please enter your name:</p>
+    <p id="name-label">请输入您的名字 / Please enter your name:</p>
+    <!-- Visitor name input -->
     <input id="visitor-name" type="text" placeholder="名字 / Name">
+    <!-- Admin email/password inputs, hidden by default -->
+    <input id="admin-email" type="email" placeholder="管理员邮箱 / Admin Email" style="display: none;">
+    <input id="admin-pass" type="password" placeholder="管理员密码 / Admin Password" style="display: none;">
     <div id="name-message" class="name-message"></div>
+    <!-- Old password hint and input retained for compatibility but hidden -->
     <p id="password-hint" class="password-hint" style="display: none;">提示：手机密码</p>
     <input id="admin-password" type="password" placeholder="密码 / Password" style="display: none;">
+    <!-- Buttons: confirm name, guest mode, admin login, admin authenticate -->
     <button id="name-submit">确认 / Confirm</button>
+    <button id="guest-btn" class="guest-btn">游客模式 / Guest</button>
+    <button id="admin-login-btn" class="admin-login-btn">管理员登录 / Admin Login</button>
+    <button id="admin-auth-btn" class="admin-auth-btn" style="display: none;">登录 / Sign In</button>
   </div>
 </div>
 
@@ -1104,10 +1134,9 @@
     </div>
   </div>
 
+  <!-- Floating admin button shown on mobile when logged in as Ly -->
+  <button id="admin-float-btn" class="admin-float-btn" onclick="openAdmin()">Admin</button>
 </div>
-
-<!-- Floating admin button shown on mobile when logged in as Ly -->
-<button id="admin-float-btn" class="admin-float-btn" onclick="openAdmin()">Admin</button>
 
 <!-- HERO -->
 <section class="hero">
@@ -1541,6 +1570,14 @@ const drinks = {
   }
 };
 
+// ── GLOBAL FLAGS ──
+// Indicates the current user is using guest mode
+window._isGuest = false;
+// Administrator Firebase Authentication UID (set to your admin user UID)
+window._adminUid = 'PMSCdqiHcAZ57CZQKwrTeBSmLKq2';
+// Indicates if current authenticated user is admin; set in auth state listener
+window._isAdmin = false;
+
 function openModal(key) {
   const d = drinks[key];
   if (!d) return;
@@ -1614,7 +1651,7 @@ function loadComments(key) {
         meta.className = 'comment-meta';
         meta.innerHTML = '<strong>' + (c.name || '匿名') + '</strong> 于 ' + dateStr + ' 评论:';
         // If admin or the comment author, add delete button
-        if (currentUser && (currentUser === 'Ly' || currentUser === c.name)) {
+        if ((window._isAdmin) || (currentUser && currentUser === c.name)) {
           const btn = document.createElement('button');
           btn.className = 'delete-comment-btn';
           btn.textContent = '删除';
@@ -1642,8 +1679,12 @@ if (globalCommentForm) {
     const input = document.getElementById('comment-input');
     const text = (input.value || '').trim();
     if (!text || !key) return;
+    // Prevent commenting in guest mode
+    if (window._isGuest) {
+      alert('游客无法发表评论 / Guests cannot comment');
+      return;
+    }
     const name = localStorage.getItem('currentUser') || '匿名';
-    saveVisitorName(name);
     // Push comment to Firebase
     if (window._firebaseDB && window._firebaseRef && window._firebasePush && window._firebaseSet) {
       const commentsRef = window._firebaseRef(window._firebaseDB, 'comments/' + key);
@@ -1665,31 +1706,6 @@ function showNamePopup() {
   if (overlay) overlay.style.display = 'flex';
 }
 
-function safeFirebaseKey(name) {
-  return (name || 'anonymous').replace(/[.#$/\[\]]/g, '_');
-}
-
-function saveVisitorName(name) {
-  if (!name) return;
-  let visitors = [];
-  try {
-    visitors = JSON.parse(localStorage.getItem('visitors')) || [];
-  } catch (err) {
-    visitors = [];
-  }
-  if (!visitors.includes(name)) {
-    visitors.push(name);
-    localStorage.setItem('visitors', JSON.stringify(visitors));
-  }
-  if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
-    const visitorRef = window._firebaseRef(window._firebaseDB, 'visitors/' + safeFirebaseKey(name));
-    window._firebaseSet(visitorRef, {
-      name: name,
-      lastSeen: Date.now()
-    });
-  }
-}
-
 function setupNamePopup() {
   const overlay = document.getElementById('name-overlay');
   const input = document.getElementById('visitor-name');
@@ -1697,54 +1713,95 @@ function setupNamePopup() {
   const btn = document.getElementById('name-submit');
   const passwordInput = document.getElementById('admin-password');
   const passwordHint = document.getElementById('password-hint');
+  const guestBtn = document.getElementById('guest-btn');
+  const adminLoginBtn = document.getElementById('admin-login-btn');
+  const adminAuthBtn = document.getElementById('admin-auth-btn');
+  const adminEmail = document.getElementById('admin-email');
+  const adminPass = document.getElementById('admin-pass');
+  const nameLabel = document.getElementById('name-label');
   if (!overlay || !input || !messageEl || !btn) return;
-
+  // Confirm button: normal visitor login
   btn.addEventListener('click', function () {
     const name = (input.value || '').trim();
-    const password = passwordInput ? passwordInput.value : '';
     if (!name) {
       messageEl.textContent = '请输入名字 / Please enter a name';
       return;
     }
-
-    localStorage.setItem('isAdmin', 'false');
-
-    if (name !== 'Ly' && passwordInput) {
-      passwordInput.style.display = 'none';
-      if (passwordHint) passwordHint.style.display = 'none';
-      passwordInput.value = '';
+    window._isGuest = false;
+    let visitors = [];
+    try {
+      visitors = JSON.parse(localStorage.getItem('visitors')) || [];
+    } catch (err) {
+      visitors = [];
     }
-
-    if (name === 'Ly') {
-      if (passwordInput && passwordInput.style.display === 'none') {
-        passwordInput.style.display = 'block';
-        if (passwordHint) passwordHint.style.display = 'block';
-        messageEl.textContent = '请输入密码 / Please enter the password';
-        return;
-      }
-      if (password !== '123580') {
-        messageEl.textContent = '密码错误 / Incorrect password';
-        localStorage.setItem('isAdmin', 'false');
-        updateAdminUI();
-        return;
-      }
-      localStorage.setItem('isAdmin', 'true');
+    if (!visitors.includes(name)) {
+      visitors.push(name);
+      localStorage.setItem('visitors', JSON.stringify(visitors));
+      messageEl.textContent = '欢迎, ' + name + '!';
+    } else {
+      messageEl.textContent = name + ' 已存在 · Already exists';
     }
-
-    saveVisitorName(name);
     localStorage.setItem('currentUser', name);
-    messageEl.textContent = name === 'Ly' ? '管理员模式开启 / Admin mode ON' : '欢迎, ' + name + '!';
     updateAdminUI();
-
     setTimeout(() => {
       overlay.style.display = 'none';
-      if (passwordInput) {
-        passwordInput.style.display = 'none';
-        passwordInput.value = '';
-      }
-      if (passwordHint) passwordHint.style.display = 'none';
-    }, 600);
+      input.value = '';
+      messageEl.textContent = '';
+    }, 500);
   });
+  // Guest mode button
+  if (guestBtn) {
+    guestBtn.addEventListener('click', function () {
+      window._isGuest = true;
+      localStorage.removeItem('currentUser');
+      messageEl.textContent = '';
+      overlay.style.display = 'none';
+      updateAdminUI();
+    });
+  }
+  // Show admin login fields
+  if (adminLoginBtn) {
+    adminLoginBtn.addEventListener('click', function () {
+      if (input) input.style.display = 'none';
+      if (btn) btn.style.display = 'none';
+      if (guestBtn) guestBtn.style.display = 'none';
+      if (adminLoginBtn) adminLoginBtn.style.display = 'none';
+      if (adminEmail) adminEmail.style.display = 'block';
+      if (adminPass) adminPass.style.display = 'block';
+      if (adminAuthBtn) adminAuthBtn.style.display = 'block';
+      messageEl.textContent = '请输入管理员邮箱和密码 / Enter admin email and password';
+      if (nameLabel) nameLabel.textContent = '管理员登录 / Admin Login';
+    });
+  }
+  // Admin authenticate
+  if (adminAuthBtn) {
+    adminAuthBtn.addEventListener('click', function () {
+      const email = adminEmail ? (adminEmail.value || '').trim() : '';
+      const pass = adminPass ? adminPass.value : '';
+      if (!email || !pass) {
+        messageEl.textContent = '请输入邮箱和密码 / Please enter email and password';
+        return;
+      }
+      if (window._firebaseAuth && window._firebaseSignIn) {
+        window._firebaseSignIn(window._firebaseAuth, email, pass).then((cred) => {
+          const user = cred.user;
+          if (user && user.uid === window._adminUid) {
+            window._isGuest = false;
+            localStorage.setItem('currentUser', 'Ly');
+            messageEl.textContent = '管理员登录成功 / Admin signed in';
+            overlay.style.display = 'none';
+            updateAdminUI();
+          } else {
+            messageEl.textContent = '非管理员账户 / Not admin account';
+          }
+        }).catch((err) => {
+          messageEl.textContent = '登录失败 / Login failed';
+        });
+      } else {
+        messageEl.textContent = 'Auth 未初始化 / Auth not ready';
+      }
+    });
+  }
 }
 
 window.addEventListener('DOMContentLoaded', function () {
@@ -1760,9 +1817,14 @@ function updateAdminUI() {
   const adminLink = document.getElementById('admin-link');
   const adminFloat = document.getElementById('admin-float-btn');
   const current = localStorage.getItem('currentUser');
-  const isAdmin = current === 'Ly' && localStorage.getItem('isAdmin') === 'true';
-  if (adminLink) adminLink.style.display = isAdmin ? 'block' : 'none';
-  if (adminFloat) adminFloat.style.display = isAdmin ? 'block' : 'none';
+  if (!adminLink) return;
+  if (current === 'Ly') {
+    adminLink.style.display = 'block';
+    if (adminFloat) adminFloat.style.display = 'block';
+  } else {
+    adminLink.style.display = 'none';
+    if (adminFloat) adminFloat.style.display = 'none';
+  }
 }
 
 function deleteComment(key, idOrIndex) {
@@ -1803,45 +1865,19 @@ function closeAdmin() {
 function loadVisitorList() {
   const listEl = document.getElementById('name-list');
   if (!listEl) return;
-  listEl.innerHTML = '<li>Loading...</li>';
-
-  if (window._firebaseDB && window._firebaseRef && window._firebaseOnValue) {
-    const visitorsRef = window._firebaseRef(window._firebaseDB, 'visitors');
-    window._firebaseOnValue(visitorsRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const names = Object.values(data)
-        .map(v => typeof v === 'string' ? v : v.name)
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b));
-      renderVisitorList(names);
-    });
-    return;
-  }
-
+  listEl.innerHTML = '';
   let visitors = [];
   try {
     visitors = JSON.parse(localStorage.getItem('visitors')) || [];
   } catch (err) {
     visitors = [];
   }
-  renderVisitorList(visitors);
-}
-
-function renderVisitorList(visitors) {
-  const listEl = document.getElementById('name-list');
-  if (!listEl) return;
-  listEl.innerHTML = '';
-  if (!visitors.length) {
-    const li = document.createElement('li');
-    li.textContent = '暂无记录 / No names yet';
-    listEl.appendChild(li);
-    return;
-  }
   visitors.forEach(name => {
     const li = document.createElement('li');
     const nameSpan = document.createElement('span');
     nameSpan.textContent = name;
     const btn = document.createElement('button');
+    // reuse delete-comment-btn styles for name deletion buttons
     btn.className = 'delete-comment-btn';
     btn.textContent = '删除';
     btn.addEventListener('click', function () {
@@ -1854,10 +1890,6 @@ function renderVisitorList(visitors) {
 }
 
 function deleteName(name) {
-  if (window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
-    const visitorRef = window._firebaseRef(window._firebaseDB, 'visitors/' + safeFirebaseKey(name));
-    window._firebaseRemove(visitorRef);
-  }
   let visitors = [];
   try {
     visitors = JSON.parse(localStorage.getItem('visitors')) || [];
@@ -1869,9 +1901,7 @@ function deleteName(name) {
     visitors.splice(idx, 1);
     localStorage.setItem('visitors', JSON.stringify(visitors));
   }
-  if (!(window._firebaseDB && window._firebaseRef && window._firebaseOnValue)) {
-    loadVisitorList();
-  }
+  loadVisitorList();
 }
 
 // ── RATING FUNCTIONS ──
@@ -1953,13 +1983,17 @@ function setupRating() {
       const key = starContainer.dataset.drinkKey;
       if (!key) return;
       const rating = parseInt(star.dataset.value);
+      // If guest, do not allow rating
+      if (window._isGuest) {
+        alert('游客无法评分 / Guests cannot rate');
+        return;
+      }
       const currentUser = localStorage.getItem('currentUser') || '';
       if (!currentUser) {
         alert('请先输入名字 / Please enter your name first');
         return;
       }
       // Save rating to Firebase
-      saveVisitorName(currentUser);
       if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
         const ratingRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + currentUser);
         window._firebaseSet(ratingRef, { value: rating, time: Date.now() });
@@ -1974,10 +2008,8 @@ function loadRatingsForAdmin(key) {
   const logContainer = document.getElementById('ratings-log-container');
   const listEl = document.getElementById('ratings-list');
   if (!logContainer || !listEl) return;
-  const currentUser = localStorage.getItem('currentUser') || '';
-  const isAdmin = currentUser === 'Ly' && localStorage.getItem('isAdmin') === 'true';
   // Only show rating logs to admin
-  if (!isAdmin) {
+  if (!window._isAdmin) {
     logContainer.style.display = 'none';
     listEl.innerHTML = '';
     return;
@@ -2155,6 +2187,13 @@ function setupAdminData() {
         onValue,
         remove
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+      // Import Firebase Authentication
+      import {
+        getAuth,
+        signInWithEmailAndPassword,
+        onAuthStateChanged,
+        signOut
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
       // Firebase project configuration. The databaseURL points to the Realtime Database instance
       const firebaseConfig = {
@@ -2180,6 +2219,27 @@ function setupAdminData() {
       window._firebaseSet = set;
       window._firebaseOnValue = onValue;
       window._firebaseRemove = remove;
+
+      // Initialize Firebase Auth and expose helper functions
+      const _auth = getAuth(_app);
+      window._firebaseAuth = _auth;
+      // Wrap signIn for use in non-module script
+      window._firebaseSignIn = signInWithEmailAndPassword;
+      window._firebaseSignOut = signOut;
+      // Listen for auth state changes to update admin flag automatically
+      onAuthStateChanged(_auth, (user) => {
+        if (user && user.uid === window._adminUid) {
+          window._isAdmin = true;
+          // When admin is logged in, set currentUser to Ly for comments/ratings
+          localStorage.setItem('currentUser', 'Ly');
+        } else {
+          window._isAdmin = false;
+        }
+        // Update admin UI whenever auth state changes
+        if (typeof updateAdminUI === 'function') {
+          updateAdminUI();
+        }
+      });
     </script>
 </body>
 </html>
