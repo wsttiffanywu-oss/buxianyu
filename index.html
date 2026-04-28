@@ -1887,6 +1887,7 @@ function loadVisitorList() {
       listEl.innerHTML = '';
       Object.keys(data).forEach(key => {
         const entry = data[key] || {};
+        // Use the stored name if available; otherwise decode the key
         const name = entry.name || decodeURIComponent(key);
         const li = document.createElement('li');
         const nameSpan = document.createElement('span');
@@ -1894,8 +1895,9 @@ function loadVisitorList() {
         const btn = document.createElement('button');
         btn.className = 'delete-comment-btn';
         btn.textContent = '删除';
+        // Pass the encoded key to deleteName so it can remove both the encoded and decoded entries
         btn.addEventListener('click', function () {
-          deleteName(name);
+          deleteName(key);
         });
         li.appendChild(nameSpan);
         li.appendChild(btn);
@@ -1927,23 +1929,38 @@ function loadVisitorList() {
   });
 }
 
-function deleteName(name) {
-  // Remove from Firebase if available
+// Delete a visitor by its key or name. The argument may be the encoded key
+// used in Firebase or the plain name. Both the encoded and raw keys will be
+// removed from Firebase to handle legacy entries. The plain name is derived
+// from the encoded key for localStorage cleanup.
+function deleteName(id) {
+  // If Firebase is available, remove both encoded and raw keys
   if (window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
     try {
-      const key = encodeURIComponent(name);
-      const ref = window._firebaseRef(window._firebaseDB, 'visitors/' + key);
-      window._firebaseRemove(ref);
+      // Determine encoded and raw representations
+      const encodedKey = encodeURIComponent(id);
+      const keysToRemove = [id, encodedKey];
+      keysToRemove.forEach(k => {
+        const ref = window._firebaseRef(window._firebaseDB, 'visitors/' + k);
+        window._firebaseRemove(ref);
+      });
     } catch (err) {
-      // ignore
+      // ignore errors silently
     }
   }
-  // Also remove from localStorage for backward compatibility
+  // Remove from localStorage for backward compatibility
   let visitors = [];
   try {
     visitors = JSON.parse(localStorage.getItem('visitors')) || [];
   } catch (err) {
     visitors = [];
+  }
+  // Compute the name from the encoded key; decode once to handle cases where id is encoded
+  let name;
+  try {
+    name = decodeURIComponent(id);
+  } catch (err) {
+    name = id;
   }
   const idx = visitors.indexOf(name);
   if (idx !== -1) {
