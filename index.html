@@ -1721,34 +1721,46 @@ function setupNamePopup() {
   const nameLabel = document.getElementById('name-label');
   if (!overlay || !input || !messageEl || !btn) return;
   // Confirm button: normal visitor login
-  btn.addEventListener('click', function () {
-    const name = (input.value || '').trim();
-    if (!name) {
-      messageEl.textContent = '请输入名字 / Please enter a name';
-      return;
-    }
-    window._isGuest = false;
-    let visitors = [];
-    try {
-      visitors = JSON.parse(localStorage.getItem('visitors')) || [];
-    } catch (err) {
-      visitors = [];
-    }
-    if (!visitors.includes(name)) {
-      visitors.push(name);
-      localStorage.setItem('visitors', JSON.stringify(visitors));
-      messageEl.textContent = '欢迎, ' + name + '!';
-    } else {
-      messageEl.textContent = name + ' 已存在 · Already exists';
-    }
-    localStorage.setItem('currentUser', name);
-    updateAdminUI();
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      input.value = '';
-      messageEl.textContent = '';
-    }, 500);
-  });
+    btn.addEventListener('click', function () {
+      const name = (input.value || '').trim();
+      if (!name) {
+        messageEl.textContent = '请输入名字 / Please enter a name';
+        return;
+      }
+      // guest flag false because user logs in with a name
+      window._isGuest = false;
+      // Maintain local list of visitors for backward compatibility
+      let visitors = [];
+      try {
+        visitors = JSON.parse(localStorage.getItem('visitors')) || [];
+      } catch (err) {
+        visitors = [];
+      }
+      if (!visitors.includes(name)) {
+        visitors.push(name);
+        localStorage.setItem('visitors', JSON.stringify(visitors));
+        messageEl.textContent = '欢迎, ' + name + '!';
+      } else {
+        messageEl.textContent = name + ' 已存在 · Already exists';
+      }
+      // Persist visitor name in Firebase so other devices can see it
+      if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
+        try {
+          const key = encodeURIComponent(name);
+          const ref = window._firebaseRef(window._firebaseDB, 'visitors/' + key);
+          window._firebaseSet(ref, { name: name, timestamp: Date.now() });
+        } catch (err) {
+          // ignore Firebase errors silently
+        }
+      }
+      localStorage.setItem('currentUser', name);
+      updateAdminUI();
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        input.value = '';
+        messageEl.textContent = '';
+      }, 500);
+    });
   // Guest mode button
   if (guestBtn) {
     guestBtn.addEventListener('click', function () {
@@ -1866,6 +1878,33 @@ function loadVisitorList() {
   const listEl = document.getElementById('name-list');
   if (!listEl) return;
   listEl.innerHTML = '';
+  // Try to read visitors from Firebase if available
+  if (window._firebaseDB && window._firebaseRef && window._firebaseOnValue) {
+    const visitorsRef = window._firebaseRef(window._firebaseDB, 'visitors');
+    // Listen once: we attach a listener; it will update listEl when data changes
+    window._firebaseOnValue(visitorsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      listEl.innerHTML = '';
+      Object.keys(data).forEach(key => {
+        const entry = data[key] || {};
+        const name = entry.name || decodeURIComponent(key);
+        const li = document.createElement('li');
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = name;
+        const btn = document.createElement('button');
+        btn.className = 'delete-comment-btn';
+        btn.textContent = '删除';
+        btn.addEventListener('click', function () {
+          deleteName(name);
+        });
+        li.appendChild(nameSpan);
+        li.appendChild(btn);
+        listEl.appendChild(li);
+      });
+    });
+    return;
+  }
+  // Fallback: use localStorage
   let visitors = [];
   try {
     visitors = JSON.parse(localStorage.getItem('visitors')) || [];
@@ -1877,7 +1916,6 @@ function loadVisitorList() {
     const nameSpan = document.createElement('span');
     nameSpan.textContent = name;
     const btn = document.createElement('button');
-    // reuse delete-comment-btn styles for name deletion buttons
     btn.className = 'delete-comment-btn';
     btn.textContent = '删除';
     btn.addEventListener('click', function () {
@@ -1890,6 +1928,17 @@ function loadVisitorList() {
 }
 
 function deleteName(name) {
+  // Remove from Firebase if available
+  if (window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
+    try {
+      const key = encodeURIComponent(name);
+      const ref = window._firebaseRef(window._firebaseDB, 'visitors/' + key);
+      window._firebaseRemove(ref);
+    } catch (err) {
+      // ignore
+    }
+  }
+  // Also remove from localStorage for backward compatibility
   let visitors = [];
   try {
     visitors = JSON.parse(localStorage.getItem('visitors')) || [];
