@@ -1577,11 +1577,15 @@ window._isGuest = false;
 window._adminUid = 'PMSCdqiHcAZ57CZQKwrTeBSmLKq2';
 // Indicates if current authenticated user is admin; set in auth state listener
 window._isAdmin = false;
+// True once Firebase auth has resolved (even if no user logged in)
+window._authReady = false;
 // Stores the current Firebase auth UID for the logged in user. This is
 // populated via the auth state change handler and used to determine
 // comment ownership when rendering delete buttons. When no user is
 // authenticated this will be null.
 window._currentUid = null;
+// Track which drink's comments are currently open so we can re-render
+window._currentDrinkKey = null;
 
 function openModal(key) {
   const d = drinks[key];
@@ -1595,11 +1599,20 @@ function openModal(key) {
   document.getElementById('modal-profile').textContent = d.profile;
   document.getElementById('modal-for').textContent = d.bestFor;
   document.getElementById('modal-notes').innerHTML = d.notes.map(n => `<span class="note-tag">${n}</span>`).join('');
+  // Store current drink key for re-rendering after auth resolves
+  window._currentDrinkKey = key;
   // Initialize comment form for this drink
   const cform = document.getElementById('comment-form');
   if (cform) {
     cform.dataset.drinkKey = key;
-    loadComments(key);
+    // Only load comments after auth is ready to ensure correct delete button visibility
+    if (window._authReady) {
+      loadComments(key);
+    } else {
+      // Auth not yet resolved - show loading state and wait
+      const list = document.getElementById('comments-list');
+      if (list) list.innerHTML = '<div style="color:var(--fog);font-size:0.8rem;padding:0.5rem">加载中...</div>';
+    }
   }
   // Setup rating for this drink
   const starContainer = document.getElementById('rating-stars');
@@ -1617,6 +1630,7 @@ function closeModal(e, force) {
   if (force || (e && e.target === document.getElementById('modal'))) {
     document.getElementById('modal').classList.remove('active');
     document.body.style.overflow = '';
+    window._currentDrinkKey = null;
   }
 }
 
@@ -1660,9 +1674,6 @@ function loadComments(key) {
         // Determine if this comment belongs to the current user by UID or,
         // as a fallback for legacy comments without uid, by comparing the
         // stored name. Only the admin or the author can delete.
-        // Only admin can delete comments via UI. Author check by name is
-        // removed because anyone could enter the same name and delete.
-        // Firebase rules enforce server-side that only authenticated admin can remove.
         if (window._isAdmin) {
           const btn = document.createElement('button');
           btn.className = 'delete-comment-btn';
@@ -1863,10 +1874,10 @@ function updateAdminUI() {
 }
 
 function deleteComment(key, idOrIndex) {
-  // Only administrators can delete comments. Hard check on both frontend
-  // and Firebase rules. If not admin, abort immediately.
+  // Only allow administrators to delete comments. Authors may remove via UI
+  // but this function should not be invoked directly by non-admins. If
+  // not admin, abort the deletion.
   if (!window._isAdmin) {
-    alert('只有管理员可以删除评论 / Only admin can delete comments');
     return;
   }
   // If idOrIndex is a string, treat as Firebase comment ID; remove from DB
@@ -2088,8 +2099,6 @@ function setupRating() {
         alert('请先输入名字 / Please enter your name first');
         return;
       }
-      // Extra safety: prevent tampering by checking Firebase auth state
-      // Ratings require a logged-in name (non-guest, non-empty)
       // Save rating to Firebase
       if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
         const ratingRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + currentUser);
@@ -2159,10 +2168,8 @@ function loadRatingsForAdmin(key) {
 }
 
 function deleteRating(key, name) {
-  // Only administrators can delete ratings. Hard check on both frontend
-  // and Firebase rules. If not admin, abort immediately.
+  // Only administrators can delete ratings. If not admin, exit immediately.
   if (!window._isAdmin) {
-    alert('只有管理员可以删除评分 / Only admin can delete ratings');
     return;
   }
   if (window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
@@ -2341,6 +2348,20 @@ function setupAdminData() {
           localStorage.setItem('currentUser', 'Ly');
         } else {
           window._isAdmin = false;
+        }
+        // Mark auth as resolved - this is the key fix.
+        // Before this fires, _isAdmin is always false so delete buttons
+        // would never show even for admin. After this fires, re-render
+        // any currently open modal so delete buttons reflect true state.
+        window._authReady = true;
+        // If a modal is open, re-render comments now that we know admin status
+        if (window._currentDrinkKey) {
+          if (typeof loadComments === 'function') {
+            loadComments(window._currentDrinkKey);
+          }
+          if (typeof loadRatingsForAdmin === 'function') {
+            loadRatingsForAdmin(window._currentDrinkKey);
+          }
         }
         // Update admin UI whenever auth state changes
         if (typeof updateAdminUI === 'function') {
