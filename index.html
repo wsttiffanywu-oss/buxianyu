@@ -1635,8 +1635,7 @@ function loadComments(key) {
     commentListeners[key] = window._firebaseOnValue(commentsRef, (snapshot) => {
       const data = snapshot.val() || {};
       list.innerHTML = '';
-      const currentUser = localStorage.getItem('currentUser');
-      Object.keys(data).forEach(commentId => {
+        Object.keys(data).forEach(commentId => {
         const c = data[commentId] || {};
         const wrapper = document.createElement('div');
         wrapper.className = 'comment';
@@ -1650,8 +1649,20 @@ function loadComments(key) {
         const meta = document.createElement('div');
         meta.className = 'comment-meta';
         meta.innerHTML = '<strong>' + (c.name || '匿名') + '</strong> 于 ' + dateStr + ' 评论:';
-        // If admin or the comment author, add delete button
-        if ((window._isAdmin) || (currentUser && currentUser === c.name)) {
+        // Determine if current authenticated user is the comment author
+        let canDelete = false;
+        if (window._isAdmin) {
+          canDelete = true;
+        } else {
+          // Require authentication and matching uid to allow deletion
+          if (window._firebaseAuth && window._firebaseAuth.currentUser && c.uid) {
+            const user = window._firebaseAuth.currentUser;
+            if (user.uid === c.uid) {
+              canDelete = true;
+            }
+          }
+        }
+        if (canDelete) {
           const btn = document.createElement('button');
           btn.className = 'delete-comment-btn';
           btn.textContent = '删除';
@@ -1689,13 +1700,17 @@ if (globalCommentForm) {
       alert('请先登录才能发表评论 / Please sign in to comment');
       return;
     }
+    // Use the current authenticated user's uid for comment ownership
+    const authUser = window._firebaseAuth ? window._firebaseAuth.currentUser : null;
     const name = localStorage.getItem('currentUser') || '匿名';
-    // Push comment to Firebase
+    const uid = authUser ? authUser.uid : null;
+    // Push comment to Firebase, including uid for secure deletion
     if (window._firebaseDB && window._firebaseRef && window._firebasePush && window._firebaseSet) {
       const commentsRef = window._firebaseRef(window._firebaseDB, 'comments/' + key);
       const newRef = window._firebasePush(commentsRef);
       window._firebaseSet(newRef, {
         name: name,
+        uid: uid,
         text: text,
         timestamp: Date.now()
       });
@@ -1990,17 +2005,21 @@ function loadRating(key) {
   if (ratingsRef && window._firebaseOnValue) {
     ratingListeners[key] = window._firebaseOnValue(ratingsRef, (snapshot) => {
       const data = snapshot.val() || {};
-      const currentUser = localStorage.getItem('currentUser') || '';
+      // Determine current authenticated user's uid
+      let uid = null;
+      if (window._firebaseAuth && window._firebaseAuth.currentUser) {
+        uid = window._firebaseAuth.currentUser.uid;
+      }
       let currentUserRating = 0;
-      const ratingEntry = data[currentUser];
-      if (ratingEntry) {
-        if (typeof ratingEntry === 'object' && ratingEntry !== null) {
-          currentUserRating = ratingEntry.value || 0;
+      if (uid && data[uid]) {
+        const entry = data[uid];
+        if (typeof entry === 'object' && entry !== null) {
+          currentUserRating = entry.value || 0;
         } else {
-          currentUserRating = ratingEntry;
+          currentUserRating = entry;
         }
       }
-      // Update star fill
+      // Update star fill based on the current user's rating
       stars.forEach(star => {
         const value = parseInt(star.dataset.value);
         if (value <= currentUserRating) {
@@ -2010,9 +2029,11 @@ function loadRating(key) {
         }
         star.classList.remove('hovered');
       });
-      // Compute average
+      // Compute average from entries; each value is an object with .value
       const values = Object.values(data).map(val => {
-        if (typeof val === 'object' && val !== null) return val.value || 0;
+        if (typeof val === 'object' && val !== null) {
+          return val.value || 0;
+        }
         return val;
       });
       if (values.length > 0) {
@@ -2064,15 +2085,18 @@ function setupRating() {
         alert('请先登录才能评分 / Please sign in to rate');
         return;
       }
-      const currentUser = localStorage.getItem('currentUser') || '';
-      if (!currentUser) {
-        alert('请先输入名字 / Please enter your name first');
+      // Determine current authenticated user
+      const authUser = window._firebaseAuth ? window._firebaseAuth.currentUser : null;
+      const currentUserName = localStorage.getItem('currentUser') || '';
+      if (!authUser) {
+        alert('登录会话丢失 / Session not found');
         return;
       }
-      // Save rating to Firebase
+      const uid = authUser.uid;
+      // Save rating to Firebase keyed by uid; store name for display in logs
       if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
-        const ratingRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + currentUser);
-        window._firebaseSet(ratingRef, { value: rating, time: Date.now() });
+        const ratingRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + uid);
+        window._firebaseSet(ratingRef, { value: rating, time: Date.now(), name: currentUserName });
       }
       // Rating updates will refresh via listener
     });
@@ -2097,15 +2121,20 @@ function loadRatingsForAdmin(key) {
     window._firebaseOnValue(rRef, (snapshot) => {
       const data = snapshot.val() || {};
       listEl.innerHTML = '';
-      Object.keys(data).forEach(name => {
-        const entry = data[name];
-        let ratingValue, timestamp;
+      Object.keys(data).forEach(uidKey => {
+        const entry = data[uidKey];
+        // Extract rating value, timestamp and display name
+        let ratingValue = 0;
+        let timestamp = 0;
+        let displayName = uidKey;
         if (typeof entry === 'object' && entry !== null) {
           ratingValue = entry.value || 0;
           timestamp = entry.time || 0;
+          if (entry.name) {
+            displayName = entry.name;
+          }
         } else {
           ratingValue = entry;
-          timestamp = 0;
         }
         let dateStr = '';
         if (timestamp) {
@@ -2122,13 +2151,13 @@ function loadRatingsForAdmin(key) {
         const div = document.createElement('div');
         div.className = 'rating-entry';
         const span = document.createElement('span');
-        span.innerHTML = '<strong>' + name + '</strong> 于 ' + dateStr + ' 评分: ' + ratingValue + ' 星';
+        span.innerHTML = '<strong>' + displayName + '</strong> 于 ' + dateStr + ' 评分: ' + ratingValue + ' 星';
         div.appendChild(span);
         const btn = document.createElement('button');
         btn.className = 'delete-rating-btn';
         btn.textContent = '删除';
         btn.addEventListener('click', function () {
-          deleteRating(key, name);
+          deleteRating(key, uidKey);
         });
         div.appendChild(btn);
         listEl.appendChild(div);
