@@ -1577,6 +1577,11 @@ window._isGuest = false;
 window._adminUid = 'PMSCdqiHcAZ57CZQKwrTeBSmLKq2';
 // Indicates if current authenticated user is admin; set in auth state listener
 window._isAdmin = false;
+// Stores the current Firebase auth UID for the logged in user. This is
+// populated via the auth state change handler and used to determine
+// comment ownership when rendering delete buttons. When no user is
+// authenticated this will be null.
+window._currentUid = null;
 
 function openModal(key) {
   const d = drinks[key];
@@ -1636,6 +1641,8 @@ function loadComments(key) {
       const data = snapshot.val() || {};
       list.innerHTML = '';
       const currentUser = localStorage.getItem('currentUser');
+      // Current authenticated UID for determining ownership of comments
+      const currentUid = window._currentUid;
       Object.keys(data).forEach(commentId => {
         const c = data[commentId] || {};
         const wrapper = document.createElement('div');
@@ -1650,9 +1657,12 @@ function loadComments(key) {
         const meta = document.createElement('div');
         meta.className = 'comment-meta';
         meta.innerHTML = '<strong>' + (c.name || '匿名') + '</strong> 于 ' + dateStr + ' 评论:';
-        // If admin or the comment author (matching uid or name), add delete button
-        const currentUid = window._currentUid;
-        if (window._isAdmin || (c.uid && currentUid && c.uid === currentUid) || (currentUser && currentUser === c.name)) {
+        // Determine if this comment belongs to the current user by UID or,
+        // as a fallback for legacy comments without uid, by comparing the
+        // stored name. Only the admin or the author can delete.
+        const isAuthor = (c.uid && currentUid && c.uid === currentUid) ||
+          (!c.uid && currentUser && currentUser === c.name);
+        if (window._isAdmin || isAuthor) {
           const btn = document.createElement('button');
           btn.className = 'delete-comment-btn';
           btn.textContent = '删除';
@@ -1686,12 +1696,17 @@ if (globalCommentForm) {
       return;
     }
     const name = localStorage.getItem('currentUser') || '匿名';
-    // Push comment to Firebase
+    // Determine the UID of the current authenticated user (if any). When
+    // anonymous auth is enabled this will still be populated. We use
+    // this to mark comment ownership for deletion checks.
+    let uid = null;
+    if (window._firebaseAuth && window._firebaseAuth.currentUser) {
+      uid = window._firebaseAuth.currentUser.uid;
+    }
+    // Push comment to Firebase with uid for ownership
     if (window._firebaseDB && window._firebaseRef && window._firebasePush && window._firebaseSet) {
       const commentsRef = window._firebaseRef(window._firebaseDB, 'comments/' + key);
       const newRef = window._firebasePush(commentsRef);
-      // Attach uid of current authenticated user if available. This is used to enforce deletion rights.
-      const uid = (window._firebaseAuth && window._firebaseAuth.currentUser) ? window._firebaseAuth.currentUser.uid : null;
       window._firebaseSet(newRef, {
         name: name,
         text: text,
@@ -1833,7 +1848,10 @@ function updateAdminUI() {
   const adminLink = document.getElementById('admin-link');
   const adminFloat = document.getElementById('admin-float-btn');
   if (!adminLink) return;
-  // Show admin UI only if the authenticated user UID matches admin UID
+  // Show admin UI only when the current user has admin privileges. The
+  // window._isAdmin flag is set in the Firebase auth state listener based
+  // on the authenticated UID. Do not rely on localStorage name as it can
+  // be modified by visitors.
   if (window._isAdmin) {
     adminLink.style.display = 'block';
     if (adminFloat) adminFloat.style.display = 'block';
@@ -1844,6 +1862,12 @@ function updateAdminUI() {
 }
 
 function deleteComment(key, idOrIndex) {
+  // Only allow administrators to delete comments. Authors may remove via UI
+  // but this function should not be invoked directly by non-admins. If
+  // not admin, abort the deletion.
+  if (!window._isAdmin) {
+    return;
+  }
   // If idOrIndex is a string, treat as Firebase comment ID; remove from DB
   if (typeof idOrIndex === 'string' && window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
     const commentRef = window._firebaseRef(window._firebaseDB, 'comments/' + key + '/' + idOrIndex);
@@ -2132,6 +2156,10 @@ function loadRatingsForAdmin(key) {
 }
 
 function deleteRating(key, name) {
+  // Only administrators can delete ratings. If not admin, exit immediately.
+  if (!window._isAdmin) {
+    return;
+  }
   if (window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
     const rRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + name);
     window._firebaseRemove(rRef);
@@ -2263,8 +2291,6 @@ function setupAdminData() {
         signInWithEmailAndPassword,
         onAuthStateChanged,
         signOut
-      ,
-        signInAnonymously
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
       // Firebase project configuration. The databaseURL points to the Realtime Database instance
@@ -2300,19 +2326,15 @@ function setupAdminData() {
       window._firebaseSignOut = signOut;
       // Listen for auth state changes to update admin flag automatically
       onAuthStateChanged(_auth, (user) => {
-        // Store current uid globally
-        if (user) {
-          window._currentUid = user.uid;
-          // Determine admin flag based on UID
-          if (user.uid === window._adminUid) {
-            window._isAdmin = true;
-            // Use a standard name for admin so existing code works
-            localStorage.setItem('currentUser', 'Ly');
-          } else {
-            window._isAdmin = false;
-          }
+        // Persist the current UID on the window so other functions can
+        // determine comment ownership. If the user is null, set to null.
+        window._currentUid = user ? user.uid : null;
+        // Determine if the authenticated user is the admin based on UID
+        if (user && user.uid === window._adminUid) {
+          window._isAdmin = true;
+          // When admin is logged in, set currentUser to Ly for comments/ratings
+          localStorage.setItem('currentUser', 'Ly');
         } else {
-          window._currentUid = null;
           window._isAdmin = false;
         }
         // Update admin UI whenever auth state changes
@@ -2320,14 +2342,6 @@ function setupAdminData() {
           updateAdminUI();
         }
       });
-
-      // Attempt anonymous sign-in for non-authenticated users so they can write to database per rules
-      // This allows visitors (non-admin) to satisfy auth != null in Firebase rules without creating accounts.
-      if (!_auth.currentUser) {
-        signInAnonymously(_auth).catch((err) => {
-          console.error('Anonymous sign-in failed', err);
-        });
-      }
     </script>
 </body>
 </html>
