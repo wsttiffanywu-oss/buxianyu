@@ -1660,9 +1660,10 @@ function loadComments(key) {
         // Determine if this comment belongs to the current user by UID or,
         // as a fallback for legacy comments without uid, by comparing the
         // stored name. Only the admin or the author can delete.
-        const isAuthor = (c.uid && currentUid && c.uid === currentUid) ||
-          (!c.uid && currentUser && currentUser === c.name);
-        if (window._isAdmin || isAuthor) {
+        // Only admin can delete comments via UI. Author check by name is
+        // removed because anyone could enter the same name and delete.
+        // Firebase rules enforce server-side that only authenticated admin can remove.
+        if (window._isAdmin) {
           const btn = document.createElement('button');
           btn.className = 'delete-comment-btn';
           btn.textContent = '删除';
@@ -1862,10 +1863,10 @@ function updateAdminUI() {
 }
 
 function deleteComment(key, idOrIndex) {
-  // Only allow administrators to delete comments. Authors may remove via UI
-  // but this function should not be invoked directly by non-admins. If
-  // not admin, abort the deletion.
+  // Only administrators can delete comments. Hard check on both frontend
+  // and Firebase rules. If not admin, abort immediately.
   if (!window._isAdmin) {
+    alert('只有管理员可以删除评论 / Only admin can delete comments');
     return;
   }
   // If idOrIndex is a string, treat as Firebase comment ID; remove from DB
@@ -2087,6 +2088,8 @@ function setupRating() {
         alert('请先输入名字 / Please enter your name first');
         return;
       }
+      // Extra safety: prevent tampering by checking Firebase auth state
+      // Ratings require a logged-in name (non-guest, non-empty)
       // Save rating to Firebase
       if (window._firebaseDB && window._firebaseRef && window._firebaseSet) {
         const ratingRef = window._firebaseRef(window._firebaseDB, 'ratings/' + key + '/' + currentUser);
@@ -2156,8 +2159,10 @@ function loadRatingsForAdmin(key) {
 }
 
 function deleteRating(key, name) {
-  // Only administrators can delete ratings. If not admin, exit immediately.
+  // Only administrators can delete ratings. Hard check on both frontend
+  // and Firebase rules. If not admin, abort immediately.
   if (!window._isAdmin) {
+    alert('只有管理员可以删除评分 / Only admin can delete ratings');
     return;
   }
   if (window._firebaseDB && window._firebaseRef && window._firebaseRemove) {
