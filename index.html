@@ -1650,8 +1650,9 @@ function loadComments(key) {
         const meta = document.createElement('div');
         meta.className = 'comment-meta';
         meta.innerHTML = '<strong>' + (c.name || '匿名') + '</strong> 于 ' + dateStr + ' 评论:';
-        // If admin or the comment author, add delete button
-        if ((window._isAdmin) || (currentUser && currentUser === c.name)) {
+        // If admin or the comment author (matching uid or name), add delete button
+        const currentUid = window._currentUid;
+        if (window._isAdmin || (c.uid && currentUid && c.uid === currentUid) || (currentUser && currentUser === c.name)) {
           const btn = document.createElement('button');
           btn.className = 'delete-comment-btn';
           btn.textContent = '删除';
@@ -1689,10 +1690,13 @@ if (globalCommentForm) {
     if (window._firebaseDB && window._firebaseRef && window._firebasePush && window._firebaseSet) {
       const commentsRef = window._firebaseRef(window._firebaseDB, 'comments/' + key);
       const newRef = window._firebasePush(commentsRef);
+      // Attach uid of current authenticated user if available. This is used to enforce deletion rights.
+      const uid = (window._firebaseAuth && window._firebaseAuth.currentUser) ? window._firebaseAuth.currentUser.uid : null;
       window._firebaseSet(newRef, {
         name: name,
         text: text,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        uid: uid
       });
     }
     input.value = '';
@@ -1828,9 +1832,9 @@ window.addEventListener('DOMContentLoaded', function () {
 function updateAdminUI() {
   const adminLink = document.getElementById('admin-link');
   const adminFloat = document.getElementById('admin-float-btn');
-  const current = localStorage.getItem('currentUser');
   if (!adminLink) return;
-  if (current === 'Ly') {
+  // Show admin UI only if the authenticated user UID matches admin UID
+  if (window._isAdmin) {
     adminLink.style.display = 'block';
     if (adminFloat) adminFloat.style.display = 'block';
   } else {
@@ -2259,6 +2263,8 @@ function setupAdminData() {
         signInWithEmailAndPassword,
         onAuthStateChanged,
         signOut
+      ,
+        signInAnonymously
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
       // Firebase project configuration. The databaseURL points to the Realtime Database instance
@@ -2294,11 +2300,19 @@ function setupAdminData() {
       window._firebaseSignOut = signOut;
       // Listen for auth state changes to update admin flag automatically
       onAuthStateChanged(_auth, (user) => {
-        if (user && user.uid === window._adminUid) {
-          window._isAdmin = true;
-          // When admin is logged in, set currentUser to Ly for comments/ratings
-          localStorage.setItem('currentUser', 'Ly');
+        // Store current uid globally
+        if (user) {
+          window._currentUid = user.uid;
+          // Determine admin flag based on UID
+          if (user.uid === window._adminUid) {
+            window._isAdmin = true;
+            // Use a standard name for admin so existing code works
+            localStorage.setItem('currentUser', 'Ly');
+          } else {
+            window._isAdmin = false;
+          }
         } else {
+          window._currentUid = null;
           window._isAdmin = false;
         }
         // Update admin UI whenever auth state changes
@@ -2306,6 +2320,14 @@ function setupAdminData() {
           updateAdminUI();
         }
       });
+
+      // Attempt anonymous sign-in for non-authenticated users so they can write to database per rules
+      // This allows visitors (non-admin) to satisfy auth != null in Firebase rules without creating accounts.
+      if (!_auth.currentUser) {
+        signInAnonymously(_auth).catch((err) => {
+          console.error('Anonymous sign-in failed', err);
+        });
+      }
     </script>
 </body>
 </html>
